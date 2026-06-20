@@ -18,11 +18,14 @@ const TakeQuiz = () => {
   const submittingRef = useRef(false);
   const navigate = useNavigate();
 
+  // Gamitin ang ref para maiwasan ang circular dependency
+  const handleSubmitRef = useRef(null);
+  const handleViolationRef = useRef(null);
+
   const handleSubmit = useCallback(async (autoSubmit = false) => {
     if (submittingRef.current) return;
     if (!autoSubmit && !window.confirm('Are you sure you want to submit the quiz?')) return;
 
-    // I-destroy muna AntiCheat bago mag-submit
     AntiCheat.destroy();
     submittingRef.current = true;
     setSubmitting(true);
@@ -37,15 +40,17 @@ const TakeQuiz = () => {
       navigate('/quiz/result');
     } catch (e) {
       console.error('Submit error:', e);
-      // Kung may error, i-reinit
-      AntiCheat.init(handleViolation);
+      if (handleViolationRef.current) {
+        AntiCheat.init(handleViolationRef.current);
+      }
       submittingRef.current = false;
       setSubmitting(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const handleViolation = useCallback(async (type, description) => {
-    if (submittingRef.current) return; // wag mag-log ng violation kung nag-su-submit na
+    if (submittingRef.current) return;
     const token = localStorage.getItem('session_token');
     try {
       const res = await api.post('/violation', {
@@ -58,10 +63,22 @@ const TakeQuiz = () => {
       setShowWarning(true);
 
       if (res.data.auto_submit) {
-        handleSubmit(true);
+        if (handleSubmitRef.current) {
+          handleSubmitRef.current(true);
+        }
       }
     } catch (e) {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // I-update ang refs pag nagbago ang functions
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
   }, [handleSubmit]);
+
+  useEffect(() => {
+    handleViolationRef.current = handleViolation;
+  }, [handleViolation]);
 
   useEffect(() => {
     const data = localStorage.getItem('quiz_data');
@@ -76,7 +93,6 @@ const TakeQuiz = () => {
     setQuizData(parsed);
     setQuestions(parsed.questions || []);
 
-    // Restore saved answers kung nag-resume
     if (parsed.is_resumed && parsed.saved_answers) {
       const restored = {};
       Object.values(parsed.saved_answers).forEach((ans) => {
@@ -92,7 +108,8 @@ const TakeQuiz = () => {
     AntiCheat.init(handleViolation);
 
     return () => AntiCheat.destroy();
-  }, [navigate, handleViolation]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate]);
 
   const handleAnswer = useCallback(async (questionId, choiceId, essayAnswer) => {
     const token = localStorage.getItem('session_token');

@@ -7,7 +7,6 @@ const JoinQuiz = () => {
   const [studentName, setStudentName] = useState('');
   const [studentId, setStudentId] = useState('');
   const [section, setSection] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [agreed, setAgreed] = useState(false);
@@ -209,9 +208,9 @@ const JoinQuiz = () => {
           <button
             type="submit"
             className="btn btn-primary w-100 btn-lg"
-            disabled={loading}
+            disabled={pendingSubmit}
           >
-            {loading ? 'Joining...' : '🚀 Join Quiz'}
+            {pendingSubmit ? 'Joining...' : '🚀 Join Quiz'}
           </button>
         </form>
 
