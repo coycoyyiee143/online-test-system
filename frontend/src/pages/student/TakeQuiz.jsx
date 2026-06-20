@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import { useQuiz } from '../../context/QuizContext';
+import { saveAnswer, calculateScore } from '../../services/answerService';
+import { submitSession } from '../../services/sessionService';
+import { logViolation } from '../../services/violationService';
+import { saveResult } from '../../services/resultService';
 import AntiCheat from '../../utils/antiCheat';
 import Timer from '../../components/student/Timer';
 import QuestionCard from '../../components/student/QuestionCard';
@@ -8,19 +12,15 @@ import QuestionPalette from '../../components/student/QuestionPalette';
 import ViolationWarning from '../../components/student/ViolationWarning';
 
 const TakeQuiz = () => {
-  const [quizData, setQuizData] = useState(null);
-  const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
+  const { currentQuiz, currentSession, questions, answers, setAnswers, resetQuiz } = useQuiz();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [violationCount, setViolationCount] = useState(0);
+  const [violationCount, setViolationCount] = useState(currentSession?.violationCount || 0);
   const [showWarning, setShowWarning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
-  const navigate = useNavigate();
-
-  // Gamitin ang ref para maiwasan ang circular dependency
   const handleSubmitRef = useRef(null);
   const handleViolationRef = useRef(null);
+  const navigate = useNavigate();
 
   const handleSubmit = useCallback(async (autoSubmit = false) => {
     if (submittingRef.current) return;
@@ -30,13 +30,35 @@ const TakeQuiz = () => {
     submittingRef.current = true;
     setSubmitting(true);
 
-    const token = localStorage.getItem('session_token');
-
     try {
-      const res = await api.post('/session/submit', { session_token: token });
-      localStorage.setItem('quiz_result', JSON.stringify(res.data.result));
-      localStorage.removeItem('session_token');
-      localStorage.removeItem('quiz_data');
+      // Calculate score
+      const score = await calculateScore(currentSession.id, questions);
+
+      // Submit session
+      await submitSession(currentSession.id);
+
+      // Save result
+      await saveResult({
+        quizId: currentQuiz.id,
+        sessionId: currentSession.id,
+        studentName: currentSession.studentName,
+        studentId: currentSession.studentId,
+        section: currentSession.section,
+        totalPoints: score.totalPoints,
+        earnedPoints: score.earnedPoints,
+        percentage: score.percentage,
+        remarks: score.remarks,
+        totalViolations: violationCount,
+      });
+
+      // Save result to localStorage for result page
+      localStorage.setItem('quiz_result', JSON.stringify({
+        ...score,
+        studentName: currentSession.studentName,
+        quizTitle: currentQuiz.title,
+      }));
+
+      resetQuiz();
       navigate('/quiz/result');
     } catch (e) {
       console.error('Submit error:', e);
@@ -46,32 +68,29 @@ const TakeQuiz = () => {
       submittingRef.current = false;
       setSubmitting(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, [currentQuiz, currentSession, questions, violationCount, navigate, resetQuiz]);
 
   const handleViolation = useCallback(async (type, description) => {
     if (submittingRef.current) return;
-    const token = localStorage.getItem('session_token');
     try {
-      const res = await api.post('/violation', {
-        session_token: token,
-        violation_type: type,
-        description,
-      });
-
-      setViolationCount(res.data.violation_count);
+      const newCount = await logViolation(
+        currentSession.id,
+        currentQuiz.id,
+        type,
+        description
+      );
+      setViolationCount(newCount);
       setShowWarning(true);
 
-      if (res.data.auto_submit) {
+      if (newCount >= currentQuiz.maxViolations) {
         if (handleSubmitRef.current) {
           handleSubmitRef.current(true);
         }
       }
     } catch (e) {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentSession, currentQuiz]);
 
-  // I-update ang refs pag nagbago ang functions
   useEffect(() => {
     handleSubmitRef.current = handleSubmit;
   }, [handleSubmit]);
@@ -81,65 +100,35 @@ const TakeQuiz = () => {
   }, [handleViolation]);
 
   useEffect(() => {
-    const data = localStorage.getItem('quiz_data');
-    const token = localStorage.getItem('session_token');
-
-    if (!data || !token) {
+    if (!currentQuiz || !currentSession) {
       navigate('/');
       return;
     }
-
-    const parsed = JSON.parse(data);
-    setQuizData(parsed);
-    setQuestions(parsed.questions || []);
-
-    if (parsed.is_resumed && parsed.saved_answers) {
-      const restored = {};
-      Object.values(parsed.saved_answers).forEach((ans) => {
-        if (ans.choice_id) {
-          restored[ans.question_id] = ans.choice_id;
-        } else if (ans.essay_answer) {
-          restored[ans.question_id] = ans.essay_answer;
-        }
-      });
-      setAnswers(restored);
-    }
-
     AntiCheat.init(handleViolation);
-
     return () => AntiCheat.destroy();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, []);
 
   const handleAnswer = useCallback(async (questionId, choiceId, essayAnswer) => {
-    const token = localStorage.getItem('session_token');
-
     setAnswers((prev) => ({
       ...prev,
       [questionId]: choiceId || essayAnswer,
     }));
-
     try {
-      await api.post('/session/answer', {
-        session_token: token,
-        question_id: questionId,
-        choice_id: choiceId,
-        essay_answer: essayAnswer,
-      });
+      await saveAnswer(currentSession.id, questionId, choiceId, essayAnswer);
     } catch (e) {}
-  }, []);
+  }, [currentSession, setAnswers]);
 
-  if (!quizData) return <div className="text-center mt-5">Loading quiz...</div>;
+  if (!currentQuiz || !currentSession) return null;
 
   const currentQuestion = questions[currentIndex];
-  const quiz = quizData.quiz;
 
   return (
     <div className="min-vh-100 bg-light">
       {showWarning && (
         <ViolationWarning
           count={violationCount}
-          max={quiz.max_violations}
+          max={currentQuiz.maxViolations}
           onClose={() => setShowWarning(false)}
         />
       )}
@@ -147,7 +136,7 @@ const TakeQuiz = () => {
       {/* Header */}
       <div className="bg-primary text-white py-3 px-4 d-flex justify-content-between align-items-center">
         <div>
-          <h5 className="mb-0 fw-bold">{quiz.title}</h5>
+          <h5 className="mb-0 fw-bold">{currentQuiz.title}</h5>
           <small>{questions.length} Questions</small>
         </div>
         <div className="d-flex align-items-center gap-3">
@@ -156,13 +145,12 @@ const TakeQuiz = () => {
               ⚠️ {violationCount} Violation(s)
             </span>
           )}
-          <Timer timeLimit={quiz.time_limit} onExpire={() => handleSubmit(true)} />
+          <Timer timeLimit={currentQuiz.timeLimit} onExpire={() => handleSubmit(true)} />
         </div>
       </div>
 
       <div className="container py-4">
         <div className="row g-4">
-          {/* Question */}
           <div className="col-lg-8">
             {currentQuestion && (
               <QuestionCard
@@ -173,8 +161,6 @@ const TakeQuiz = () => {
                 total={questions.length}
               />
             )}
-
-            {/* Navigation */}
             <div className="d-flex justify-content-between mt-3">
               <button
                 className="btn btn-outline-primary"
@@ -183,7 +169,6 @@ const TakeQuiz = () => {
               >
                 ← Previous
               </button>
-
               {currentIndex < questions.length - 1 ? (
                 <button
                   className="btn btn-primary"
@@ -203,7 +188,6 @@ const TakeQuiz = () => {
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className="col-lg-4">
             <QuestionPalette
               questions={questions}
@@ -211,7 +195,6 @@ const TakeQuiz = () => {
               currentIndex={currentIndex}
               onJump={setCurrentIndex}
             />
-
             <div className="card mt-3 shadow-sm">
               <div className="card-body text-center">
                 <p className="mb-2 fw-bold">
@@ -227,7 +210,6 @@ const TakeQuiz = () => {
                 </div>
               </div>
             </div>
-
             <button
               className="btn btn-success w-100 mt-3 btn-lg"
               onClick={() => handleSubmit(false)}

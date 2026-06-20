@@ -15,11 +15,7 @@ const QuestionPalette = ({ questions, answers, currentIndex, onJump }) => {
               <button
                 key={q.id}
                 className={`btn btn-sm ${
-                  isCurrent
-                    ? 'btn-primary'
-                    : isAnswered
-                    ? 'btn-success'
-                    : 'btn-outline-secondary'
+                  isCurrent ? 'btn-primary' : isAnswered ? 'btn-success' : 'btn-outline-secondary'
                 }`}
                 style={{ width: '40px', height: '40px' }}
                 onClick={() => onJump(index)}

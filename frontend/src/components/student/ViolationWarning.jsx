@@ -4,10 +4,7 @@ const ViolationWarning = ({ count, max, onClose }) => {
   const remaining = max - count;
 
   return (
-    <div
-      className="modal show d-block"
-      style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-    >
+    <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content border-danger">
           <div className="modal-header bg-danger text-white">

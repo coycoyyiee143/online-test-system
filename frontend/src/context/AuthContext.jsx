@@ -1,50 +1,46 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../utils/api';
+import { auth, db } from '../firebase/config';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { logoutUser } from '../services/authService';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setUser(firebaseUser);
+          setUserData(data);
+        } else {
+          setUser(null);
+          setUserData(null);
+        }
+      } else {
+        setUser(null);
+        setUserData(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (email, password) => {
-    const response = await api.post('/login', { email, password });
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
-    return response.data;
-  };
-
-  const register = async (name, email, password, password_confirmation) => {
-    const response = await api.post('/register', { name, email, password, password_confirmation });
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
-    return response.data;
-  };
-
   const logout = async () => {
-    try {
-      await api.post('/logout');
-    } catch (e) {}
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    await logoutUser();
     setUser(null);
+    setUserData(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, userData, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

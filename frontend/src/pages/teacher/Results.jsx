@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import { getResultsByQuiz } from '../../services/resultService';
 import Navbar from '../../components/teacher/Navbar';
 
 const Results = () => {
@@ -14,24 +14,22 @@ const Results = () => {
   useEffect(() => {
     const fetchResults = async () => {
       try {
-        const res = await api.get(`/quizzes/${id}/results`);
-        setData(res.data);
+        const res = await getResultsByQuiz(id);
+        setData(res);
       } catch (e) {}
     };
     fetchResults();
   }, [id]);
 
-  if (!data) return <div className="text-center mt-5">Loading...</div>;
+  if (!data) return <div className="text-center mt-5"><div className="spinner-border text-primary" /></div>;
 
   const { results, stats } = data;
-
-  // Get unique sections
   const sections = [...new Set(results.map((r) => r.section).filter(Boolean))];
 
   const filtered = results.filter((r) => {
     const matchSearch =
-      r.student_name.toLowerCase().includes(search.toLowerCase()) ||
-      r.student_id.toLowerCase().includes(search.toLowerCase());
+      r.studentName?.toLowerCase().includes(search.toLowerCase()) ||
+      r.studentId?.toLowerCase().includes(search.toLowerCase());
     const matchSection = filterSection === '' || r.section === filterSection;
     const matchRemarks = filterRemarks === 'all' || r.remarks === filterRemarks;
     return matchSearch && matchSection && matchRemarks;
@@ -40,15 +38,10 @@ const Results = () => {
   const handleExport = () => {
     const headers = ['Student Name', 'Student ID', 'Section', 'Score', 'Percentage', 'Remarks', 'Violations'];
     const rows = filtered.map((r) => [
-      r.student_name,
-      r.student_id,
-      r.section || '-',
-      `${r.earned_points}/${r.total_points}`,
-      `${r.percentage}%`,
-      r.remarks,
-      r.total_violations,
+      r.studentName, r.studentId, r.section || '-',
+      `${r.earnedPoints}/${r.totalPoints}`,
+      `${r.percentage}%`, r.remarks, r.totalViolations,
     ]);
-
     const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -64,15 +57,10 @@ const Results = () => {
       <Navbar />
       <div className="container py-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => navigate(`/teacher/quiz/${id}`)}
-          >
+          <button className="btn btn-outline-secondary btn-sm" onClick={() => navigate(`/teacher/quiz/${id}`)}>
             ← Back
           </button>
-          <button className="btn btn-success btn-sm" onClick={handleExport}>
-            📥 Export CSV
-          </button>
+          <button className="btn btn-success btn-sm" onClick={handleExport}>📥 Export CSV</button>
         </div>
 
         <h3 className="fw-bold mb-4">📊 Quiz Results</h3>
@@ -111,23 +99,13 @@ const Results = () => {
             />
           </div>
           <div className="col-md-4">
-            <select
-              className="form-select"
-              value={filterSection}
-              onChange={(e) => setFilterSection(e.target.value)}
-            >
+            <select className="form-select" value={filterSection} onChange={(e) => setFilterSection(e.target.value)}>
               <option value="">All Sections</option>
-              {sections.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
+              {sections.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="col-md-3">
-            <select
-              className="form-select"
-              value={filterRemarks}
-              onChange={(e) => setFilterRemarks(e.target.value)}
-            >
+            <select className="form-select" value={filterRemarks} onChange={(e) => setFilterRemarks(e.target.value)}>
               <option value="all">All Remarks</option>
               <option value="Passed">Passed</option>
               <option value="Failed">Failed</option>
@@ -135,7 +113,7 @@ const Results = () => {
           </div>
         </div>
 
-        {/* Results Table */}
+        {/* Table */}
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white fw-bold d-flex justify-content-between">
             <span>Student Results</span>
@@ -157,19 +135,15 @@ const Results = () => {
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center text-muted py-4">
-                      No results found
-                    </td>
-                  </tr>
+                  <tr><td colSpan={8} className="text-center text-muted py-4">No results found</td></tr>
                 ) : (
                   filtered.map((r, index) => (
                     <tr key={r.id}>
                       <td>{index + 1}</td>
-                      <td>{r.student_name}</td>
-                      <td>{r.student_id}</td>
+                      <td>{r.studentName}</td>
+                      <td>{r.studentId}</td>
                       <td>{r.section || '-'}</td>
-                      <td>{r.earned_points} / {r.total_points}</td>
+                      <td>{r.earnedPoints} / {r.totalPoints}</td>
                       <td>
                         <div className="progress" style={{ height: '20px', minWidth: '100px' }}>
                           <div
@@ -186,8 +160,8 @@ const Results = () => {
                         </span>
                       </td>
                       <td>
-                        <span className={`badge ${r.total_violations > 0 ? 'bg-danger' : 'bg-secondary'}`}>
-                          {r.total_violations}
+                        <span className={`badge ${r.totalViolations > 0 ? 'bg-danger' : 'bg-secondary'}`}>
+                          {r.totalViolations}
                         </span>
                       </td>
                     </tr>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
+import { getQuizzesByTeacher } from '../../services/quizService';
 import Navbar from '../../components/teacher/Navbar';
 import QuizCard from '../../components/teacher/QuizCard';
 
@@ -9,12 +10,13 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const fetchQuizzes = async () => {
     try {
-      const res = await api.get('/quizzes');
-      setQuizzes(res.data);
+      const data = await getQuizzesByTeacher(user.uid);
+      setQuizzes(data);
     } catch (e) {
     } finally {
       setLoading(false);
@@ -22,21 +24,20 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    fetchQuizzes();
-  }, []);
+    if (user) fetchQuizzes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const filtered = quizzes.filter((q) => {
     const matchSearch = q.title.toLowerCase().includes(search.toLowerCase());
     const matchFilter =
       filter === 'all' ||
-      (filter === 'active' && q.is_active) ||
-      (filter === 'inactive' && !q.is_active);
+      (filter === 'active' && q.isActive) ||
+      (filter === 'inactive' && !q.isActive);
     return matchSearch && matchFilter;
   });
 
-  const totalActive = quizzes.filter((q) => q.is_active).length;
-  const totalQuestions = quizzes.reduce((acc, q) => acc + (q.questions_count || 0), 0);
-  const totalSessions = quizzes.reduce((acc, q) => acc + (q.sessions_count || 0), 0);
+  const totalActive = quizzes.filter((q) => q.isActive).length;
 
   return (
     <div className="min-vh-100 bg-light">
@@ -48,13 +49,11 @@ const Dashboard = () => {
           {[
             { label: 'Total Quizzes', value: quizzes.length, color: 'primary', icon: '📝' },
             { label: 'Active Quizzes', value: totalActive, color: 'success', icon: '✅' },
-            { label: 'Total Questions', value: totalQuestions, color: 'info', icon: '❓' },
-            { label: 'Total Sessions', value: totalSessions, color: 'warning', icon: '👥' },
           ].map((stat) => (
             <div key={stat.label} className="col-6 col-md-3">
-              <div className={`card border-${stat.color} shadow-sm h-100`}>
-                <div className="card-body text-center py-3">
-                  <div className="fs-2 mb-1">{stat.icon}</div>
+              <div className={`card border-${stat.color} shadow-sm text-center`}>
+                <div className="card-body py-3">
+                  <div className="fs-2">{stat.icon}</div>
                   <div className={`fs-3 fw-bold text-${stat.color}`}>{stat.value}</div>
                   <small className="text-muted">{stat.label}</small>
                 </div>
@@ -64,12 +63,9 @@ const Dashboard = () => {
         </div>
 
         {/* Header */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
           <h4 className="fw-bold mb-0">My Quizzes</h4>
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate('/teacher/create-quiz')}
-          >
+          <button className="btn btn-primary" onClick={() => navigate('/teacher/create-quiz')}>
             + Create Quiz
           </button>
         </div>
@@ -98,7 +94,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Quiz List */}
         {loading ? (
           <div className="text-center mt-5">
             <div className="spinner-border text-primary" />

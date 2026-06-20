@@ -1,46 +1,44 @@
 import React, { useState } from 'react';
-import api from '../../utils/api';
+import { addQuestion, updateQuestion } from '../../services/questionService';
 
 const QuestionForm = ({ quizId, onSuccess, editData = null }) => {
-  const [questionText, setQuestionText] = useState(editData?.question_text || '');
-  const [questionType, setQuestionType] = useState(editData?.question_type || 'multiple_choice');
+  const [questionText, setQuestionText] = useState(editData?.questionText || '');
+  const [questionType, setQuestionType] = useState(editData?.questionType || 'multiple_choice');
   const [points, setPoints] = useState(editData?.points || 1);
   const [choices, setChoices] = useState(
     editData?.choices || [
-      { choice_text: '', is_correct: false },
-      { choice_text: '', is_correct: false },
-      { choice_text: '', is_correct: false },
-      { choice_text: '', is_correct: false },
+      { id: '1', choiceText: '', isCorrect: false },
+      { id: '2', choiceText: '', isCorrect: false },
+      { id: '3', choiceText: '', isCorrect: false },
+      { id: '4', choiceText: '', isCorrect: false },
     ]
   );
   const [loading, setLoading] = useState(false);
 
   const handleChoiceChange = (index, field, value) => {
     const updated = [...choices];
-    if (field === 'is_correct') {
-      updated.forEach((c, i) => (c.is_correct = i === index));
+    if (field === 'isCorrect') {
+      updated.forEach((c) => (c.isCorrect = false));
+      updated[index].isCorrect = true;
     } else {
       updated[index][field] = value;
     }
     setChoices(updated);
   };
 
-  const handleTrueFalse = () => {
-    setChoices([
-      { choice_text: 'True', is_correct: true },
-      { choice_text: 'False', is_correct: false },
-    ]);
-  };
-
   const handleTypeChange = (type) => {
     setQuestionType(type);
-    if (type === 'true_false') handleTrueFalse();
-    if (type === 'multiple_choice') {
+    if (type === 'true_false') {
       setChoices([
-        { choice_text: '', is_correct: false },
-        { choice_text: '', is_correct: false },
-        { choice_text: '', is_correct: false },
-        { choice_text: '', is_correct: false },
+        { id: '1', choiceText: 'True', isCorrect: true },
+        { id: '2', choiceText: 'False', isCorrect: false },
+      ]);
+    } else if (type === 'multiple_choice') {
+      setChoices([
+        { id: '1', choiceText: '', isCorrect: false },
+        { id: '2', choiceText: '', isCorrect: false },
+        { id: '3', choiceText: '', isCorrect: false },
+        { id: '4', choiceText: '', isCorrect: false },
       ]);
     }
   };
@@ -50,16 +48,16 @@ const QuestionForm = ({ quizId, onSuccess, editData = null }) => {
     setLoading(true);
     try {
       const payload = {
-        question_text: questionText,
-        question_type: questionType,
-        points,
+        questionText,
+        questionType,
+        points: parseInt(points),
         choices: questionType !== 'essay' ? choices : [],
       };
 
       if (editData) {
-        await api.put(`/quizzes/${quizId}/questions/${editData.id}`, payload);
+        await updateQuestion(editData.id, payload);
       } else {
-        await api.post(`/quizzes/${quizId}/questions`, payload);
+        await addQuestion(quizId, payload);
       }
 
       onSuccess();
@@ -103,7 +101,7 @@ const QuestionForm = ({ quizId, onSuccess, editData = null }) => {
           className="form-control"
           min={1}
           value={points}
-          onChange={(e) => setPoints(parseInt(e.target.value))}
+          onChange={(e) => setPoints(e.target.value)}
           required
         />
       </div>
@@ -112,21 +110,21 @@ const QuestionForm = ({ quizId, onSuccess, editData = null }) => {
         <div className="mb-3">
           <label className="form-label fw-bold">Choices</label>
           {choices.map((choice, index) => (
-            <div key={index} className="input-group mb-2">
+            <div key={choice.id} className="input-group mb-2">
               <div className="input-group-text">
                 <input
                   type="radio"
                   name="correct_choice"
-                  checked={choice.is_correct}
-                  onChange={() => handleChoiceChange(index, 'is_correct', true)}
+                  checked={choice.isCorrect}
+                  onChange={() => handleChoiceChange(index, 'isCorrect', true)}
                 />
               </div>
               <input
                 type="text"
                 className="form-control"
                 placeholder={`Choice ${index + 1}`}
-                value={choice.choice_text}
-                onChange={(e) => handleChoiceChange(index, 'choice_text', e.target.value)}
+                value={choice.choiceText}
+                onChange={(e) => handleChoiceChange(index, 'choiceText', e.target.value)}
                 disabled={questionType === 'true_false'}
                 required
               />
