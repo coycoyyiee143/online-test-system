@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
+import { createQuiz } from '../../services/quizService';
 import Navbar from '../../components/teacher/Navbar';
 
 const CreateQuiz = () => {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    time_limit: 30,
-    max_violations: 3,
-    randomize_questions: false,
-    randomize_choices: false,
-    available_from: '',
-    available_until: '',
+    timeLimit: 30,
+    maxViolations: 3,
+    randomizeQuestions: false,
+    randomizeChoices: false,
+    availableFrom: '',
+    availableUntil: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -23,10 +25,10 @@ const CreateQuiz = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/quizzes', form);
-      navigate(`/teacher/quiz/${res.data.quiz.id}`);
+      const { id } = await createQuiz(user.uid, form);
+      navigate(`/teacher/quiz/${id}`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error creating quiz');
+      setError(err.message || 'Error creating quiz');
     } finally {
       setLoading(false);
     }
@@ -60,7 +62,6 @@ const CreateQuiz = () => {
                   required
                 />
               </div>
-
               <div className="mb-3">
                 <label className="form-label fw-bold">Description</label>
                 <textarea
@@ -71,7 +72,6 @@ const CreateQuiz = () => {
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                 />
               </div>
-
               <div className="row g-3 mb-3">
                 <div className="col-md-6">
                   <label className="form-label fw-bold">Time Limit (minutes)</label>
@@ -79,8 +79,8 @@ const CreateQuiz = () => {
                     type="number"
                     className="form-control"
                     min={1}
-                    value={form.time_limit}
-                    onChange={(e) => setForm({ ...form, time_limit: parseInt(e.target.value) })}
+                    value={form.timeLimit}
+                    onChange={(e) => setForm({ ...form, timeLimit: parseInt(e.target.value) })}
                     required
                   />
                 </div>
@@ -90,21 +90,20 @@ const CreateQuiz = () => {
                     type="number"
                     className="form-control"
                     min={1}
-                    value={form.max_violations}
-                    onChange={(e) => setForm({ ...form, max_violations: parseInt(e.target.value) })}
+                    value={form.maxViolations}
+                    onChange={(e) => setForm({ ...form, maxViolations: parseInt(e.target.value) })}
                     required
                   />
                 </div>
               </div>
-
               <div className="row g-3 mb-3">
                 <div className="col-md-6">
                   <label className="form-label fw-bold">Available From</label>
                   <input
                     type="datetime-local"
                     className="form-control"
-                    value={form.available_from}
-                    onChange={(e) => setForm({ ...form, available_from: e.target.value })}
+                    value={form.availableFrom}
+                    onChange={(e) => setForm({ ...form, availableFrom: e.target.value })}
                   />
                 </div>
                 <div className="col-md-6">
@@ -112,12 +111,11 @@ const CreateQuiz = () => {
                   <input
                     type="datetime-local"
                     className="form-control"
-                    value={form.available_until}
-                    onChange={(e) => setForm({ ...form, available_until: e.target.value })}
+                    value={form.availableUntil}
+                    onChange={(e) => setForm({ ...form, availableUntil: e.target.value })}
                   />
                 </div>
               </div>
-
               <div className="mb-4">
                 <label className="form-label fw-bold">Options</label>
                 <div className="d-flex gap-4">
@@ -126,8 +124,8 @@ const CreateQuiz = () => {
                       type="checkbox"
                       className="form-check-input"
                       id="randomQ"
-                      checked={form.randomize_questions}
-                      onChange={(e) => setForm({ ...form, randomize_questions: e.target.checked })}
+                      checked={form.randomizeQuestions}
+                      onChange={(e) => setForm({ ...form, randomizeQuestions: e.target.checked })}
                     />
                     <label className="form-check-label" htmlFor="randomQ">
                       Randomize Questions
@@ -138,8 +136,8 @@ const CreateQuiz = () => {
                       type="checkbox"
                       className="form-check-input"
                       id="randomC"
-                      checked={form.randomize_choices}
-                      onChange={(e) => setForm({ ...form, randomize_choices: e.target.checked })}
+                      checked={form.randomizeChoices}
+                      onChange={(e) => setForm({ ...form, randomizeChoices: e.target.checked })}
                     />
                     <label className="form-check-label" htmlFor="randomC">
                       Randomize Choices
@@ -147,12 +145,7 @@ const CreateQuiz = () => {
                   </div>
                 </div>
               </div>
-
-              <button
-                type="submit"
-                className="btn btn-primary w-100 btn-lg"
-                disabled={loading}
-              >
+              <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading}>
                 {loading ? 'Creating...' : 'Create Quiz'}
               </button>
             </form>

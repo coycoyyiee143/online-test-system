@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import { getQuizByCode } from '../../services/quizService';
+import { startSession } from '../../services/sessionService';
+import { getQuestionsByQuiz } from '../../services/questionService';
+import { useQuiz } from '../../context/QuizContext';
 
 const JoinQuiz = () => {
   const [quizCode, setQuizCode] = useState('');
@@ -8,14 +11,15 @@ const JoinQuiz = () => {
   const [studentId, setStudentId] = useState('');
   const [section, setSection] = useState('');
   const [error, setError] = useState('');
+  const [pendingSubmit, setPendingSubmit] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [pendingSubmit, setPendingSubmit] = useState(false);
+  const { setCurrentQuiz, setCurrentSession, setQuestions } = useQuiz();
   const navigate = useNavigate();
 
   const handleJoin = async (e) => {
     e.preventDefault();
-    // Show modal muna bago mag-proceed
+    setError('');
     setShowModal(true);
   };
 
@@ -25,31 +29,44 @@ const JoinQuiz = () => {
     setPendingSubmit(true);
 
     try {
-      const findRes = await api.post('/quiz/find', { quiz_code: quizCode });
-      const quiz = findRes.data;
+      // Find quiz by code
+      const quiz = await getQuizByCode(quizCode);
+      if (!quiz) {
+        setError('❌ Invalid or inactive quiz code.');
+        setPendingSubmit(false);
+        return;
+      }
 
-      const startRes = await api.post('/session/start', {
-        quiz_id: quiz.quiz_id,
-        student_name: studentName,
-        student_id: studentId,
-        section: section,
-      });
+      // Start session
+      const { session, isResumed } = await startSession(
+        quiz.id,
+        studentName,
+        studentId,
+        section
+      );
 
-      localStorage.setItem('session_token', startRes.data.session_token);
-      localStorage.setItem('quiz_data', JSON.stringify(startRes.data));
+      // Get questions
+      let questions = await getQuestionsByQuiz(quiz.id);
+
+      // Randomize if needed
+      if (quiz.randomizeQuestions) {
+        questions = questions.sort(() => Math.random() - 0.5);
+      }
+      if (quiz.randomizeChoices) {
+        questions = questions.map((q) => ({
+          ...q,
+          choices: [...q.choices].sort(() => Math.random() - 0.5),
+        }));
+      }
+
+      // Save to context
+      setCurrentQuiz(quiz);
+      setCurrentSession({ ...session, isResumed });
+      setQuestions(questions);
 
       navigate('/quiz/take');
     } catch (err) {
-      const status = err.response?.status;
-      const message = err.response?.data?.message || 'Invalid quiz code or quiz is not active';
-
-      if (status === 403) {
-        setError('⛔ ' + message);
-      } else if (status === 404) {
-        setError('❌ Quiz not found or is not active.');
-      } else {
-        setError('⚠️ ' + message);
-      }
+      setError('⛔ ' + (err.message || 'Something went wrong.'));
     } finally {
       setPendingSubmit(false);
     }
@@ -69,47 +86,40 @@ const JoinQuiz = () => {
               <div className="modal-body">
                 <p className="text-muted small mb-3">
                   Please read the following rules carefully before starting the quiz.
-                  Violations will be recorded and reported to your teacher.
                 </p>
-
                 <div className="mb-3">
                   <h6 className="fw-bold text-danger">🚫 Prohibited Actions</h6>
                   <ul className="small">
-                    <li>Switching to another tab or window during the quiz</li>
+                    <li>Switching to another tab or window</li>
                     <li>Minimizing or hiding the browser</li>
                     <li>Refreshing or closing the browser window</li>
                     <li>Copying or pasting any content</li>
                     <li>Right-clicking anywhere on the page</li>
-                    <li>Using keyboard shortcuts (F12, Ctrl+U, Ctrl+S, etc.)</li>
+                    <li>Using keyboard shortcuts (F12, Ctrl+U, etc.)</li>
                     <li>Exiting fullscreen mode</li>
                   </ul>
                 </div>
-
                 <div className="mb-3">
                   <h6 className="fw-bold text-primary">📋 Violation System</h6>
                   <ul className="small">
-                    <li>Every prohibited action is recorded as a <strong>violation</strong></li>
+                    <li>Every prohibited action is recorded as a violation</li>
                     <li><strong>1st violation</strong> — Warning shown</li>
                     <li><strong>2nd violation</strong> — Warning shown</li>
-                    <li><strong>3rd violation</strong> — Quiz is <strong>automatically submitted</strong></li>
-                    <li>All violations are visible to your teacher with timestamps</li>
+                    <li><strong>3rd violation</strong> — Quiz auto-submitted</li>
+                    <li>All violations visible to your teacher</li>
                   </ul>
                 </div>
-
                 <div className="mb-3">
                   <h6 className="fw-bold text-success">✅ Good to Know</h6>
                   <ul className="small">
-                    <li>Your answers are <strong>auto-saved</strong> as you answer</li>
-                    <li>A timer is shown — submit before it runs out</li>
-                    <li>If you accidentally refresh, you may resume your session</li>
-                    <li>Ensure a <strong>stable internet connection</strong> before starting</li>
-                    <li>The quiz will request <strong>fullscreen mode</strong> — please allow it</li>
+                    <li>Answers are auto-saved as you go</li>
+                    <li>Timer is shown — submit before it runs out</li>
+                    <li>Stable internet connection required</li>
+                    <li>Quiz will request fullscreen — please allow it</li>
                   </ul>
                 </div>
-
                 <div className="alert alert-danger small mb-0">
                   <strong>⚠️ Note:</strong> Any form of cheating will be reported to your teacher.
-                  Make sure to answer honestly and independently.
                 </div>
               </div>
               <div className="modal-footer flex-column align-items-stretch">
@@ -128,10 +138,7 @@ const JoinQuiz = () => {
                 <div className="d-flex gap-2">
                   <button
                     className="btn btn-outline-secondary w-50"
-                    onClick={() => {
-                      setShowModal(false);
-                      setAgreed(false);
-                    }}
+                    onClick={() => { setShowModal(false); setAgreed(false); }}
                   >
                     Cancel
                   </button>
@@ -204,13 +211,11 @@ const JoinQuiz = () => {
               required
             />
           </div>
-
           <button
             type="submit"
             className="btn btn-primary w-100 btn-lg"
-            disabled={pendingSubmit}
           >
-            {pendingSubmit ? 'Joining...' : '🚀 Join Quiz'}
+            🚀 Join Quiz
           </button>
         </form>
 

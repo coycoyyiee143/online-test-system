@@ -8,16 +8,16 @@ const QuestionCard = ({ question, answer, onAnswer, index, total }) => {
         <span className="badge bg-primary">{question.points} pt{question.points > 1 ? 's' : ''}</span>
       </div>
       <div className="card-body">
-        {question.image_path && (
+        {question.imagePath && (
           <img
-            src={question.image_path}
+            src={question.imagePath}
             alt="Question"
             className="img-fluid mb-3 rounded"
           />
         )}
-        <p className="fs-5 mb-4">{question.question_text}</p>
+        <p className="fs-5 mb-4">{question.questionText}</p>
 
-        {question.question_type === 'essay' ? (
+        {question.questionType === 'essay' ? (
           <textarea
             className="form-control"
             rows={5}
@@ -30,7 +30,7 @@ const QuestionCard = ({ question, answer, onAnswer, index, total }) => {
             {question.choices.map((choice) => (
               <label
                 key={choice.id}
-                className={`d-flex align-items-center p-3 rounded border cursor-pointer ${
+                className={`d-flex align-items-center p-3 rounded border ${
                   answer === choice.id ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary'
                 }`}
                 style={{ cursor: 'pointer' }}
@@ -42,7 +42,7 @@ const QuestionCard = ({ question, answer, onAnswer, index, total }) => {
                   checked={answer === choice.id}
                   onChange={() => onAnswer(question.id, choice.id, null)}
                 />
-                {choice.choice_text}
+                {choice.choiceText}
               </label>
             ))}
           </div>

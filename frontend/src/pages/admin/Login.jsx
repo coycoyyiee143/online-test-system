@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../../services/authService';
 
-const Login = () => {
+const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,11 +15,11 @@ const Login = () => {
     setError('');
     try {
       const { userData } = await loginUser(email, password);
-      if (userData.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/teacher/dashboard');
+      if (userData.role !== 'admin') {
+        setError('Access denied. Admin only.');
+        return;
       }
+      navigate('/admin/dashboard');
     } catch (err) {
       setError(err.message || 'Invalid credentials');
     } finally {
@@ -28,12 +28,12 @@ const Login = () => {
   };
 
   return (
-    <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+    <div className="min-vh-100 d-flex align-items-center justify-content-center bg-dark">
       <div className="card shadow p-4" style={{ maxWidth: '420px', width: '100%' }}>
         <div className="text-center mb-4">
-          <div style={{ fontSize: '50px' }}>📝</div>
-          <h2 className="fw-bold text-primary">QuizSystem</h2>
-          <p className="text-muted">Teacher Login</p>
+          <div style={{ fontSize: '50px' }}>🛡️</div>
+          <h2 className="fw-bold text-dark">Admin Panel</h2>
+          <p className="text-muted">Restricted Access Only</p>
         </div>
 
         {error && <div className="alert alert-danger">{error}</div>}
@@ -44,7 +44,7 @@ const Login = () => {
             <input
               type="email"
               className="form-control"
-              placeholder="Enter your email"
+              placeholder="Admin email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -55,33 +55,19 @@ const Login = () => {
             <input
               type="password"
               className="form-control"
-              placeholder="Enter your password"
+              placeholder="Admin password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+          <button type="submit" className="btn btn-dark w-100 btn-lg" disabled={loading}>
+            {loading ? 'Logging in...' : '🔐 Login'}
           </button>
         </form>
-
-        <div className="text-center mt-3">
-          <small className="text-muted">
-            No account yet?{' '}
-            <Link to="/teacher/register" className="text-primary">Register here</Link>
-          </small>
-        </div>
-        <hr />
-        <div className="text-center">
-          <small className="text-muted">
-            Are you a student?{' '}
-            <Link to="/" className="text-primary">Join a quiz</Link>
-          </small>
-        </div>
       </div>
     </div>
   );
 };
 
-export default Login;
+export default AdminLogin;

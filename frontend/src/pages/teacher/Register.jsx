@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { Link } from 'react-router-dom';
+import { registerTeacher } from '../../services/authService';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -9,8 +9,7 @@ const Register = () => {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { register } = useAuth();
-  const navigate = useNavigate();
+  const [success, setSuccess] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -20,26 +19,48 @@ const Register = () => {
     }
     setLoading(true);
     setError('');
-
     try {
-      await register(name, email, password, passwordConfirm);
-      navigate('/teacher/dashboard');
+      await registerTeacher(name, email, password);
+      setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
+  if (success) {
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+        <div className="card shadow p-5 text-center" style={{ maxWidth: '420px', width: '100%' }}>
+          <div style={{ fontSize: '60px' }}>⏳</div>
+          <h4 className="fw-bold text-warning mt-3">Account Pending Approval</h4>
+          <p className="text-muted">
+            Your account has been created and is waiting for admin approval.
+            You will be able to login once your account is approved.
+          </p>
+          <Link to="/teacher/login" className="btn btn-primary mt-2">
+            Back to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
       <div className="card shadow p-4" style={{ maxWidth: '420px', width: '100%' }}>
         <div className="text-center mb-4">
-          <h2 className="fw-bold text-primary">📝 QuizSystem</h2>
+          <div style={{ fontSize: '50px' }}>📝</div>
+          <h2 className="fw-bold text-primary">QuizSystem</h2>
           <p className="text-muted">Create Teacher Account</p>
         </div>
 
         {error && <div className="alert alert-danger">{error}</div>}
+
+        <div className="alert alert-info small">
+          ℹ️ Your account will need admin approval before you can login.
+        </div>
 
         <form onSubmit={handleRegister}>
           <div className="mb-3">
@@ -86,11 +107,7 @@ const Register = () => {
               required
             />
           </div>
-          <button
-            type="submit"
-            className="btn btn-primary w-100 btn-lg"
-            disabled={loading}
-          >
+          <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading}>
             {loading ? 'Registering...' : 'Register'}
           </button>
         </form>
