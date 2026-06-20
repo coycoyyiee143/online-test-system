@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllTeachers, approveTeacher, rejectTeacher } from '../../services/adminService';
-import { getAllQuizzes } from '../../services/adminService';
+import { getAllTeachers, approveTeacher, rejectTeacher, getAllQuizzes } from '../../services/adminService';
 import AdminNavbar from '../../components/admin/Navbar';
 
 const AdminDashboard = () => {
@@ -23,112 +22,235 @@ const AdminDashboard = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const handleApprove = async (uid) => {
-    try {
-      await approveTeacher(uid);
-      fetchData();
-    } catch (e) {}
+    try { await approveTeacher(uid); fetchData(); } catch (e) {}
   };
 
   const handleReject = async (uid) => {
     if (!window.confirm('Are you sure you want to reject this teacher?')) return;
-    try {
-      await rejectTeacher(uid);
-      fetchData();
-    } catch (e) {}
+    try { await rejectTeacher(uid); fetchData(); } catch (e) {}
   };
 
   const pending = teachers.filter((t) => t.status === 'pending');
   const approved = teachers.filter((t) => t.status === 'approved');
   const rejected = teachers.filter((t) => t.status === 'rejected');
 
+  const s = {
+    page: { minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' },
+    container: { maxWidth: '1000px', margin: '0 auto', padding: '28px 20px' },
+    statCard: {
+      background: '#fff',
+      borderRadius: '12px',
+      padding: '20px',
+      border: '1px solid #e0e0e0',
+      textAlign: 'center',
+      flex: 1,
+    },
+    tableWrap: {
+      background: '#fff',
+      borderRadius: '12px',
+      border: '1px solid #e0e0e0',
+      overflow: 'hidden',
+    },
+    th: {
+      padding: '12px 16px',
+      fontSize: '11px',
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      color: '#888',
+      borderBottom: '1px solid #f0f0f0',
+      textAlign: 'left',
+      background: '#fafafa',
+    },
+    td: {
+      padding: '14px 16px',
+      fontSize: '13px',
+      color: '#333',
+      borderBottom: '1px solid #f5f5f5',
+    },
+  };
+
   if (loading) return (
-    <div className="min-vh-100 d-flex align-items-center justify-content-center">
-      <div className="spinner-border text-dark" />
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{
+        width: '32px', height: '32px',
+        border: '3px solid #e0e0e0',
+        borderTop: '3px solid #000',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
+  const tabs = [
+    { key: 'pending', label: `Pending`, count: pending.length },
+    { key: 'approved', label: `Approved`, count: approved.length },
+    { key: 'rejected', label: `Rejected`, count: rejected.length },
+    { key: 'quizzes', label: `Quizzes`, count: quizzes.length },
+  ];
+
+  const statusBadge = (status) => {
+    const map = {
+      pending: { bg: '#fffbeb', color: '#d97706', border: '#fcd34d' },
+      approved: { bg: '#f0fdf4', color: '#16a34a', border: '#86efac' },
+      rejected: { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' },
+    };
+    const style = map[status] || map.pending;
+    return (
+      <span style={{
+        background: style.bg,
+        color: style.color,
+        border: `1px solid ${style.border}`,
+        borderRadius: '6px',
+        padding: '3px 10px',
+        fontSize: '12px',
+        fontWeight: '600',
+      }}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
+  };
+
   return (
-    <div className="min-vh-100 bg-light">
+    <div style={s.page}>
       <AdminNavbar />
-      <div className="container py-4">
-        <h3 className="fw-bold mb-4">🛡️ Admin Dashboard</h3>
+      <div style={s.container}>
+
+        {/* Header */}
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Dashboard</h4>
+          <p style={{ fontSize: '13px', color: '#888', margin: '4px 0 0 0' }}>
+            Manage teachers and monitor quizzes
+          </p>
+        </div>
 
         {/* Stats */}
-        <div className="row g-3 mb-4">
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
           {[
-            { label: 'Total Teachers', value: teachers.length, color: 'primary', icon: '👨‍🏫' },
-            { label: 'Pending Approval', value: pending.length, color: 'warning', icon: '⏳' },
-            { label: 'Approved', value: approved.length, color: 'success', icon: '✅' },
-            { label: 'Total Quizzes', value: quizzes.length, color: 'info', icon: '📝' },
+            { label: 'Total Teachers', value: teachers.length },
+            { label: 'Pending', value: pending.length },
+            { label: 'Approved', value: approved.length },
+            { label: 'Total Quizzes', value: quizzes.length },
           ].map((stat) => (
-            <div key={stat.label} className="col-6 col-md-3">
-              <div className={`card border-${stat.color} shadow-sm text-center`}>
-                <div className="card-body py-3">
-                  <div className="fs-2">{stat.icon}</div>
-                  <div className={`fs-3 fw-bold text-${stat.color}`}>{stat.value}</div>
-                  <small className="text-muted">{stat.label}</small>
-                </div>
-              </div>
+            <div key={stat.label} style={s.statCard}>
+              <p style={{ fontSize: '26px', fontWeight: '800', margin: '0 0 4px 0', color: '#111' }}>
+                {stat.value}
+              </p>
+              <p style={{ fontSize: '11px', color: '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {stat.label}
+              </p>
             </div>
           ))}
         </div>
 
         {/* Tabs */}
-        <ul className="nav nav-tabs mb-4">
-          {[
-            { key: 'pending', label: `⏳ Pending (${pending.length})` },
-            { key: 'approved', label: `✅ Approved (${approved.length})` },
-            { key: 'rejected', label: `❌ Rejected (${rejected.length})` },
-            { key: 'quizzes', label: `📝 All Quizzes (${quizzes.length})` },
-          ].map((tab) => (
-            <li key={tab.key} className="nav-item">
-              <button
-                className={`nav-link ${activeTab === tab.key ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.key)}
-              >
-                {tab.label}
-              </button>
-            </li>
+        <div style={{
+          display: 'flex',
+          gap: '4px',
+          marginBottom: '20px',
+          borderBottom: '1px solid #e0e0e0',
+          paddingBottom: '0',
+        }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '10px 16px',
+                border: 'none',
+                background: 'none',
+                fontSize: '13px',
+                fontWeight: activeTab === tab.key ? '700' : '500',
+                color: activeTab === tab.key ? '#111' : '#888',
+                cursor: 'pointer',
+                borderBottom: activeTab === tab.key ? '2px solid #000' : '2px solid transparent',
+                marginBottom: '-1px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              {tab.label}
+              <span style={{
+                background: activeTab === tab.key ? '#000' : '#f0f0f0',
+                color: activeTab === tab.key ? '#fff' : '#888',
+                borderRadius: '999px',
+                padding: '1px 7px',
+                fontSize: '11px',
+                fontWeight: '700',
+              }}>
+                {tab.count}
+              </span>
+            </button>
           ))}
-        </ul>
+        </div>
 
         {/* Pending Tab */}
         {activeTab === 'pending' && (
           <div>
             {pending.length === 0 ? (
-              <div className="text-center mt-4">
-                <div className="fs-1">✅</div>
-                <p className="text-muted">No pending approvals</p>
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#888' }}>
+                <p style={{ fontSize: '14px' }}>No pending approvals</p>
               </div>
             ) : (
               pending.map((teacher) => (
-                <div key={teacher.uid} className="card shadow-sm mb-3">
-                  <div className="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                      <h6 className="fw-bold mb-1">{teacher.name}</h6>
-                      <small className="text-muted">{teacher.email}</small>
-                      <br />
-                      <span className="badge bg-warning mt-1">Pending</span>
-                    </div>
-                    <div className="d-flex gap-2">
-                      <button
-                        className="btn btn-success btn-sm"
-                        onClick={() => handleApprove(teacher.uid)}
-                      >
-                        ✅ Approve
-                      </button>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => handleReject(teacher.uid)}
-                      >
-                        ❌ Reject
-                      </button>
-                    </div>
+                <div
+                  key={teacher.uid}
+                  style={{
+                    background: '#fff',
+                    borderRadius: '12px',
+                    padding: '16px 20px',
+                    border: '1px solid #e0e0e0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <div>
+                    <p style={{ fontWeight: '600', fontSize: '14px', margin: '0 0 2px 0' }}>
+                      {teacher.name}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#888', margin: '0 0 6px 0' }}>
+                      {teacher.email}
+                    </p>
+                    {statusBadge('pending')}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => handleApprove(teacher.uid)}
+                      style={{
+                        padding: '8px 16px',
+                        border: 'none',
+                        borderRadius: '7px',
+                        background: '#000',
+                        color: '#fff',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleReject(teacher.uid)}
+                      style={{
+                        padding: '8px 16px',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '7px',
+                        background: '#fff',
+                        color: '#333',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Reject
+                    </button>
                   </div>
                 </div>
               ))
@@ -138,31 +260,41 @@ const AdminDashboard = () => {
 
         {/* Approved Tab */}
         {activeTab === 'approved' && (
-          <div className="table-responsive">
-            <table className="table table-hover bg-white shadow-sm">
-              <thead className="table-success">
+          <div style={s.tableWrap}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  {['#', 'Name', 'Email', 'Status', 'Action'].map((h) => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {approved.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center text-muted py-4">No approved teachers</td></tr>
+                  <tr>
+                    <td colSpan={5} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>
+                      No approved teachers
+                    </td>
+                  </tr>
                 ) : (
                   approved.map((teacher, index) => (
                     <tr key={teacher.uid}>
-                      <td>{index + 1}</td>
-                      <td>{teacher.name}</td>
-                      <td>{teacher.email}</td>
-                      <td><span className="badge bg-success">Approved</span></td>
-                      <td>
+                      <td style={s.td}>{index + 1}</td>
+                      <td style={{ ...s.td, fontWeight: '600' }}>{teacher.name}</td>
+                      <td style={s.td}>{teacher.email}</td>
+                      <td style={s.td}>{statusBadge('approved')}</td>
+                      <td style={s.td}>
                         <button
-                          className="btn btn-sm btn-outline-danger"
                           onClick={() => handleReject(teacher.uid)}
+                          style={{
+                            padding: '6px 12px',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '6px',
+                            background: '#fff',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            fontWeight: '500',
+                          }}
                         >
                           Revoke
                         </button>
@@ -177,31 +309,42 @@ const AdminDashboard = () => {
 
         {/* Rejected Tab */}
         {activeTab === 'rejected' && (
-          <div className="table-responsive">
-            <table className="table table-hover bg-white shadow-sm">
-              <thead className="table-danger">
+          <div style={s.tableWrap}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  {['#', 'Name', 'Email', 'Status', 'Action'].map((h) => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {rejected.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center text-muted py-4">No rejected teachers</td></tr>
+                  <tr>
+                    <td colSpan={5} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>
+                      No rejected teachers
+                    </td>
+                  </tr>
                 ) : (
                   rejected.map((teacher, index) => (
                     <tr key={teacher.uid}>
-                      <td>{index + 1}</td>
-                      <td>{teacher.name}</td>
-                      <td>{teacher.email}</td>
-                      <td><span className="badge bg-danger">Rejected</span></td>
-                      <td>
+                      <td style={s.td}>{index + 1}</td>
+                      <td style={{ ...s.td, fontWeight: '600' }}>{teacher.name}</td>
+                      <td style={s.td}>{teacher.email}</td>
+                      <td style={s.td}>{statusBadge('rejected')}</td>
+                      <td style={s.td}>
                         <button
-                          className="btn btn-sm btn-outline-success"
                           onClick={() => handleApprove(teacher.uid)}
+                          style={{
+                            padding: '6px 12px',
+                            border: 'none',
+                            borderRadius: '6px',
+                            background: '#000',
+                            color: '#fff',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            fontWeight: '500',
+                          }}
                         >
                           Approve
                         </button>
@@ -216,32 +359,53 @@ const AdminDashboard = () => {
 
         {/* Quizzes Tab */}
         {activeTab === 'quizzes' && (
-          <div className="table-responsive">
-            <table className="table table-hover bg-white shadow-sm">
-              <thead className="table-primary">
+          <div style={s.tableWrap}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Title</th>
-                  <th>Quiz Code</th>
-                  <th>Status</th>
-                  <th>Time Limit</th>
+                  {['#', 'Title', 'Quiz Code', 'Status', 'Time Limit'].map((h) => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {quizzes.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center text-muted py-4">No quizzes yet</td></tr>
+                  <tr>
+                    <td colSpan={5} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>
+                      No quizzes yet
+                    </td>
+                  </tr>
                 ) : (
                   quizzes.map((quiz, index) => (
                     <tr key={quiz.id}>
-                      <td>{index + 1}</td>
-                      <td>{quiz.title}</td>
-                      <td><span className="badge bg-primary">{quiz.quizCode}</span></td>
-                      <td>
-                        <span className={`badge ${quiz.isActive ? 'bg-success' : 'bg-secondary'}`}>
+                      <td style={s.td}>{index + 1}</td>
+                      <td style={{ ...s.td, fontWeight: '600' }}>{quiz.title}</td>
+                      <td style={s.td}>
+                        <span style={{
+                          background: '#f0f0f0',
+                          borderRadius: '6px',
+                          padding: '3px 10px',
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          letterSpacing: '1px',
+                        }}>
+                          {quiz.quizCode}
+                        </span>
+                      </td>
+                      <td style={s.td}>
+                        <span style={{
+                          background: quiz.isActive ? '#f0fdf4' : '#fafafa',
+                          color: quiz.isActive ? '#16a34a' : '#888',
+                          border: `1px solid ${quiz.isActive ? '#86efac' : '#e0e0e0'}`,
+                          borderRadius: '6px',
+                          padding: '3px 10px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                        }}>
                           {quiz.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td>{quiz.timeLimit} mins</td>
+                      <td style={s.td}>{quiz.timeLimit} mins</td>
                     </tr>
                   ))
                 )}
