@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getResultDetail } from '../../services/resultService';
+import {
+  getResultDetail,
+  getResultsByQuiz,
+  recalculateResultsForQuiz,
+} from '../../services/resultService';
 import { getQuestionsByQuiz } from '../../services/questionService';
-import { getResultsByQuiz } from '../../services/resultService';
+import { gradeEssayAnswer } from '../../services/answerService';
 import Navbar from '../../components/teacher/Navbar';
 
 const ResultDetail = () => {
@@ -11,33 +15,72 @@ const ResultDetail = () => {
   const [answers, setAnswers] = useState([]);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [gradeInputs, setGradeInputs] = useState({});
+  const [savingId, setSavingId] = useState(null);
   const navigate = useNavigate();
 
+  const fetchData = async () => {
+    try {
+      const [questionsData, answersData, resultsData] = await Promise.all([
+        getQuestionsByQuiz(quizId),
+        getResultDetail(sessionId),
+        getResultsByQuiz(quizId),
+      ]);
+
+      setQuestions(questionsData);
+      setAnswers(answersData);
+
+      // Find this student's result
+      const studentResult = resultsData.results.find(
+        (r) => r.sessionId === sessionId
+      );
+      setResult(studentResult);
+
+      // Seed grade inputs from existing saved grades
+      const seeded = {};
+      answersData.forEach((a) => {
+        if (typeof a.awardedPoints === 'number') {
+          seeded[a.id] = a.awardedPoints;
+        }
+      });
+      setGradeInputs((prev) => ({ ...seeded, ...prev }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [questionsData, answersData, resultsData] = await Promise.all([
-          getQuestionsByQuiz(quizId),
-          getResultDetail(sessionId),
-          getResultsByQuiz(quizId),
-        ]);
-
-        setQuestions(questionsData);
-        setAnswers(answersData);
-
-        // Find this student's result
-        const studentResult = resultsData.results.find(
-          (r) => r.sessionId === sessionId
-        );
-        setResult(studentResult);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quizId, sessionId]);
+
+  const handleSaveGrade = async (answer, maxPoints) => {
+    const rawValue = gradeInputs[answer.id];
+    const awardedPoints = parseFloat(rawValue);
+
+    if (isNaN(awardedPoints)) {
+      alert('Please enter a valid number of points.');
+      return;
+    }
+
+    setSavingId(answer.id);
+    try {
+      await gradeEssayAnswer(answer.id, awardedPoints, maxPoints);
+
+      // Recalculate this quiz's results so the score reflects the new grade
+      const updatedQuestions = await getQuestionsByQuiz(quizId);
+      await recalculateResultsForQuiz(quizId, updatedQuestions);
+
+      await fetchData();
+    } catch (e) {
+      console.error(e);
+      alert('Error saving grade. Please try again.');
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -120,6 +163,8 @@ const ResultDetail = () => {
           const selectedChoice = question.choices?.find((c) => c.id === studentAnswer?.choiceId);
           const isCorrect = selectedChoice?.isCorrect;
           const isUnanswered = !studentAnswer || (!studentAnswer.choiceId && !studentAnswer.essayAnswer);
+          const isGraded = isEssay && studentAnswer?.graded;
+          const hasEssayAnswer = isEssay && studentAnswer?.essayAnswer;
 
           return (
             <div
@@ -158,6 +203,16 @@ const ResultDetail = () => {
                     {isUnanswered ? 'No Answer' : isCorrect ? 'Correct' : 'Incorrect'}
                   </span>
                 )}
+                {isEssay && hasEssayAnswer && (
+                  <span style={{
+                    fontSize: '12px', fontWeight: '600', padding: '3px 10px', borderRadius: '6px',
+                    background: isGraded ? '#f0fdf4' : '#fffbeb',
+                    color: isGraded ? '#16a34a' : '#d97706',
+                    border: `1px solid ${isGraded ? '#86efac' : '#fcd34d'}`,
+                  }}>
+                    {isGraded ? `Graded — ${studentAnswer.awardedPoints}/${question.points} pts` : 'Needs Grading'}
+                  </span>
+                )}
               </div>
 
               {/* Question Body */}
@@ -174,11 +229,78 @@ const ResultDetail = () => {
                     <div style={{
                       background: '#fafafa', borderRadius: '8px', padding: '12px 14px',
                       border: '1px solid #f0f0f0', fontSize: '13px', color: '#333', lineHeight: '1.6',
+                      marginBottom: hasEssayAnswer ? '16px' : 0,
                     }}>
                       {studentAnswer?.essayAnswer || (
                         <span style={{ color: '#aaa', fontStyle: 'italic' }}>No answer provided</span>
                       )}
                     </div>
+
+                    {/* Grading control — only shown if the student actually wrote an answer */}
+                    {hasEssayAnswer && (
+                      <div style={{
+                        background: '#fff',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '8px',
+                        padding: '12px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        flexWrap: 'wrap',
+                      }}>
+                        <label style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#888' }}>
+                          Award Points
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={question.points}
+                          step="0.5"
+                          value={gradeInputs[studentAnswer.id] ?? ''}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            // Allow empty/in-progress typing, but clamp once it's a valid number
+                            if (raw === '') {
+                              setGradeInputs((prev) => ({ ...prev, [studentAnswer.id]: '' }));
+                              return;
+                            }
+                            const num = parseFloat(raw);
+                            if (isNaN(num)) return;
+                            const clamped = Math.max(0, Math.min(num, question.points));
+                            setGradeInputs((prev) => ({ ...prev, [studentAnswer.id]: clamped }));
+                          }}
+                          style={{
+                            width: '80px',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '6px',
+                            padding: '7px 10px',
+                            fontSize: '13px',
+                            outline: 'none',
+                            fontFamily: 'Inter, sans-serif',
+                          }}
+                        />
+                        <span style={{ fontSize: '13px', color: '#888' }}>
+                          / {question.points} pts
+                        </span>
+                        <button
+                          onClick={() => handleSaveGrade(studentAnswer, question.points)}
+                          disabled={savingId === studentAnswer.id}
+                          style={{
+                            marginLeft: 'auto',
+                            padding: '8px 16px',
+                            border: 'none',
+                            borderRadius: '6px',
+                            background: savingId === studentAnswer.id ? '#ccc' : '#000',
+                            color: '#fff',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            cursor: savingId === studentAnswer.id ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {savingId === studentAnswer.id ? 'Saving...' : isGraded ? 'Update Grade' : 'Save Grade'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

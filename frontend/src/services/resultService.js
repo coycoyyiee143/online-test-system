@@ -57,17 +57,23 @@ export const getResultDetail = async (sessionId) => {
 };
 
 // Recalculate and overwrite the score for a single result document.
-// Uses the exact same scoring rule as calculateScore in answerService.js:
-// essay questions are skipped, a choice question is correct only if the
-// student's choiceId matches the question's current correct choice.
+// Mirrors calculateScore in answerService.js: for choice questions, full
+// points only if the student's choiceId matches the current correct choice.
+// For essay questions, awarded points only if the teacher has graded it
+// (answer.graded === true) — ungraded essays contribute 0 until graded.
 const computeScoreFromAnswers = (questions, answers) => {
   let totalPoints = 0;
   let earnedPoints = 0;
 
   for (const question of questions) {
     totalPoints += question.points;
-    if (question.questionType !== 'essay') {
-      const answer = answers.find((a) => a.questionId === question.id);
+    const answer = answers.find((a) => a.questionId === question.id);
+
+    if (question.questionType === 'essay') {
+      if (answer && answer.graded && typeof answer.awardedPoints === 'number') {
+        earnedPoints += answer.awardedPoints;
+      }
+    } else {
       if (answer && answer.choiceId) {
         const correctChoice = question.choices.find((c) => c.isCorrect);
         if (correctChoice && answer.choiceId === correctChoice.id) {
