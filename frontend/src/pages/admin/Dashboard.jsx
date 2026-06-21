@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getAllTeachers, approveTeacher, rejectTeacher, getAllQuizzes } from '../../services/adminService';
 import AdminNavbar from '../../components/admin/Navbar';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [teachers, setTeachers] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
   const [activeTab, setActiveTab] = useState('pending');
@@ -377,7 +379,13 @@ const AdminDashboard = () => {
                   </tr>
                 ) : (
                   quizzes.map((quiz, index) => (
-                    <tr key={quiz.id}>
+                    <tr
+                      key={quiz.id}
+                      onClick={() => navigate(`/admin/quiz/${quiz.id}/questions`)}
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
                       <td style={s.td}>{index + 1}</td>
                       <td style={{ ...s.td, fontWeight: '600' }}>{quiz.title}</td>
                       <td style={s.td}>
