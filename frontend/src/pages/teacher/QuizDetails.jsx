@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getQuiz, toggleQuizActive } from '../../services/quizService';
+import { getQuiz, toggleQuizActive, getQuizEffectiveStatus } from '../../services/quizService';
 import { getQuestionsByQuiz, deleteQuestion } from '../../services/questionService';
 import { getSessionsByQuiz } from '../../services/sessionService';
 import { getViolationsByQuiz } from '../../services/violationService';
@@ -50,6 +50,11 @@ const QuizDetails = () => {
 
  const submittedCount = participants.filter((p) => p.status === 'submitted').length;
 
+  const participantMap = participants.reduce((acc, participant) => {
+    acc[participant.id] = participant;
+    return acc;
+  }, {});
+
   const s = {
     page: { minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' },
     container: { maxWidth: '1000px', margin: '0 auto', padding: '28px 20px' },
@@ -75,6 +80,8 @@ const QuizDetails = () => {
     { key: 'violations', label: 'Violations', count: violations.length },
     { key: 'details', label: 'Details', count: null },
   ];
+
+  const effectiveStatus = getQuizEffectiveStatus(quiz);
 
   const formatDateTime = (value) => {
     if (!value) return '-';
@@ -127,11 +134,25 @@ const QuizDetails = () => {
                 </span>
                 <span style={{
                   fontSize: '12px', fontWeight: '600', padding: '4px 10px', borderRadius: '6px',
-                  background: quiz.isActive ? '#f0fdf4' : '#fafafa',
-                  color: quiz.isActive ? '#16a34a' : '#888',
-                  border: `1px solid ${quiz.isActive ? '#86efac' : '#e0e0e0'}`,
+                  background: effectiveStatus === 'active' ? '#f0fdf4'
+                    : effectiveStatus === 'expired' ? '#fef2f2'
+                    : effectiveStatus === 'upcoming' ? '#eff6ff'
+                    : '#fafafa',
+                  color: effectiveStatus === 'active' ? '#16a34a'
+                    : effectiveStatus === 'expired' ? '#dc2626'
+                    : effectiveStatus === 'upcoming' ? '#2563eb'
+                    : '#888',
+                  border: `1px solid ${
+                    effectiveStatus === 'active' ? '#86efac'
+                    : effectiveStatus === 'expired' ? '#fca5a5'
+                    : effectiveStatus === 'upcoming' ? '#93c5fd'
+                    : '#e0e0e0'
+                  }`,
                 }}>
-                  {quiz.isActive ? 'Active' : 'Inactive'}
+                  {effectiveStatus === 'active' ? 'Active'
+                    : effectiveStatus === 'expired' ? 'Expired'
+                    : effectiveStatus === 'upcoming' ? 'Upcoming'
+                    : 'Inactive'}
                 </span>
                 <span style={{ fontSize: '12px', fontWeight: '500', padding: '4px 10px', borderRadius: '6px', background: '#fafafa', color: '#555', border: '1px solid #e0e0e0' }}>
                   {quiz.timeLimit} mins
@@ -139,15 +160,25 @@ const QuizDetails = () => {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={handleToggle}
-                style={{
-                  padding: '9px 16px', border: '1px solid #e0e0e0', borderRadius: '8px',
-                  background: '#fff', color: '#333', fontSize: '13px', fontWeight: '500', cursor: 'pointer',
-                }}
-              >
-                {quiz.isActive ? 'Deactivate' : 'Activate'}
-              </button>
+              {effectiveStatus === 'expired' ? (
+                <span style={{
+                  padding: '9px 16px', borderRadius: '8px', background: '#fafafa',
+                  color: '#aaa', fontSize: '13px', fontWeight: '500', fontStyle: 'italic',
+                  display: 'flex', alignItems: 'center',
+                }}>
+                  Quiz period has ended
+                </span>
+              ) : (
+                <button
+                  onClick={handleToggle}
+                  style={{
+                    padding: '9px 16px', border: '1px solid #e0e0e0', borderRadius: '8px',
+                    background: '#fff', color: '#333', fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+                  }}
+                >
+                  {quiz.isActive ? 'Deactivate' : 'Activate'}
+                </button>
+              )}
               <button
                 onClick={() => navigate(`/teacher/quiz/${id}/results`)}
                 style={{
@@ -294,14 +325,14 @@ const QuizDetails = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['#', 'Name', 'Student ID', 'Section', 'Status', 'Violations', 'Started', 'Submitted'].map((h) => (
+                    {['#', 'Name', 'Student ID', 'Section', 'Status', 'Started', 'Submitted'].map((h) => (
                       <th key={h} style={s.th}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {participants.length === 0 ? (
-                    <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>No participants yet</td></tr>
+                    <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>No participants yet</td></tr>
                   ) : (
                     participants.map((p, index) => (
                       <tr key={p.id}>
@@ -310,16 +341,6 @@ const QuizDetails = () => {
                         <td style={s.td}>{p.studentId}</td>
                         <td style={s.td}>{p.section || '-'}</td>
                         <td style={s.td}>{statusBadge(p.status)}</td>
-                        <td style={s.td}>
-                          <span style={{
-                            fontSize: '12px', fontWeight: '700', padding: '3px 10px', borderRadius: '6px',
-                            background: p.violationCount > 0 ? '#fef2f2' : '#fafafa',
-                            color: p.violationCount > 0 ? '#dc2626' : '#888',
-                            border: `1px solid ${p.violationCount > 0 ? '#fca5a5' : '#e0e0e0'}`,
-                          }}>
-                            {p.violationCount}
-                          </span>
-                        </td>
                         <td style={s.td}>{p.startedAt?.toDate ? new Date(p.startedAt.toDate()).toLocaleTimeString() : '-'}</td>
                         <td style={s.td}>{p.submittedAt?.toDate ? new Date(p.submittedAt.toDate()).toLocaleTimeString() : '-'}</td>
                       </tr>
@@ -346,7 +367,7 @@ const QuizDetails = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['#', 'Student', 'Violation Type', 'Description', 'Time'].map((h) => (
+                    {['#', 'Student', 'Student ID', 'Violation', 'Description', 'Time'].map((h) => (
                       <th key={h} style={s.th}>{h}</th>
                     ))}
                   </tr>
@@ -358,7 +379,13 @@ const QuizDetails = () => {
                     violations.map((v, index) => (
                       <tr key={v.id}>
                         <td style={s.td}>{index + 1}</td>
-                        <td style={{ ...s.td, fontWeight: '600' }}>{v.studentName || '-'}</td>
+                        <td style={{ ...s.td, fontWeight: '600' }}>
+                          {participantMap[v.sessionId]?.studentName || 'Unknown Student'}
+                        </td>
+
+                        <td style={s.td}>
+                          {participantMap[v.sessionId]?.studentId || '-'}
+                        </td>
                         <td style={s.td}>
                           <span style={{
                             fontSize: '12px', fontWeight: '600', padding: '3px 10px', borderRadius: '6px',
@@ -385,7 +412,8 @@ const QuizDetails = () => {
               { label: 'Title', value: quiz.title || '-' },
               { label: 'Description', value: quiz.description || '-' },
               { label: 'Quiz Code', value: quiz.quizCode || '-' },
-              { label: 'Status', value: quiz.isActive ? 'Active' : 'Inactive' },
+              { label: 'Status', value: effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1) },
+              { label: 'Manually Activated', value: quiz.isActive ? 'Yes' : 'No' },
               { label: 'Time Limit', value: `${quiz.timeLimit} mins` },
               { label: 'Max Violations', value: quiz.maxViolations },
               { label: 'Available From', value: formatDateTime(quiz.availableFrom) },
@@ -417,4 +445,3 @@ const QuizDetails = () => {
 };
 
 export default QuizDetails;
-

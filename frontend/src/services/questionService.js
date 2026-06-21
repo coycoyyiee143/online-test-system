@@ -8,6 +8,7 @@ import {
   getDocs,
   query,
   where,
+  orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
 
@@ -23,12 +24,30 @@ export const addQuestion = async (quizId, questionData) => {
 
 // Get Questions by Quiz
 export const getQuestionsByQuiz = async (quizId) => {
- const q = query(
-  collection(db, "questions"),
-  where("quizId", "==", quizId)
-);
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  try {
+    console.log("Quiz ID:", quizId);
+
+    const q = query(
+      collection(db, "questions"),
+      where("quizId", "==", quizId),
+      orderBy("createdAt", "asc")
+    );
+
+    const snapshot = await getDocs(q);  
+
+    snapshot.forEach((doc) => {
+      console.log(doc.id, doc.data());
+    });
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (err) {
+    console.error("ERROR CODE:", err.code);
+    console.error("ERROR MESSAGE:", err.message);
+    console.error(err);
+  }
 };
 
 // Update Question
