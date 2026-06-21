@@ -16,6 +16,8 @@ const QuizDetails = () => {
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('questions');
   const navigate = useNavigate();
+  const [editData, setEditData] = useState(null);
+
 
   const fetchQuiz = useCallback(async () => {
     try { const data = await getQuiz(id); setQuiz(data); } catch (e) {}
@@ -48,12 +50,42 @@ const QuizDetails = () => {
     try { await toggleQuizActive(id, quiz.isActive); fetchQuiz(); } catch (e) {}
   };
 
- const submittedCount = participants.filter((p) => p.status === 'submitted').length;
+  const submittedCount = participants.filter((p) => p.status === 'submitted').length;
+  const effectiveStatus = getQuizEffectiveStatus(quiz);
+  const isExpired = effectiveStatus === 'expired';
+  const isLocked = submittedCount > 0;
 
   const participantMap = participants.reduce((acc, participant) => {
     acc[participant.id] = participant;
     return acc;
   }, {});
+
+  const formatDateTime = (value) => {
+    if (!value) return '-';
+    if (value?.toDate) return new Date(value.toDate()).toLocaleString();
+    const parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) return parsed.toLocaleString();
+    return value;
+  };
+
+  const statusBadge = (status) => {
+    const map = {
+      submitted: { bg: '#f0fdf4', color: '#16a34a', border: '#86efac' },
+      active: { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd' },
+      expired: { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' },
+    };
+    const style = map[status] || map.expired;
+    return (
+      <span style={{
+        background: style.bg, color: style.color,
+        border: `1px solid ${style.border}`,
+        borderRadius: '6px', padding: '3px 10px',
+        fontSize: '12px', fontWeight: '600',
+      }}>
+        {status}
+      </span>
+    );
+  };
 
   const s = {
     page: { minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' },
@@ -81,33 +113,22 @@ const QuizDetails = () => {
     { key: 'details', label: 'Details', count: null },
   ];
 
-  const effectiveStatus = getQuizEffectiveStatus(quiz);
 
-  const formatDateTime = (value) => {
-    if (!value) return '-';
-    // Firestore Timestamp
-    if (value?.toDate) return new Date(value.toDate()).toLocaleString();
-    // datetime-local string e.g. "2026-06-21T00:39"
-    const parsed = new Date(value);
-    if (!isNaN(parsed.getTime())) return parsed.toLocaleString();
-    return value;
-  };
-
-  const statusBadge = (status) => {
+  const effectiveStatusBadge = () => {
     const map = {
-      submitted: { bg: '#f0fdf4', color: '#16a34a', border: '#86efac' },
-      active: { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd' },
-      expired: { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' },
+      active: { bg: '#f0fdf4', color: '#16a34a', border: '#86efac', label: 'Active' },
+      expired: { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5', label: 'Expired' },
+      upcoming: { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd', label: 'Upcoming' },
+      inactive: { bg: '#fafafa', color: '#888', border: '#e0e0e0', label: 'Inactive' },
     };
-    const style = map[status] || map.expired;
+    const style = map[effectiveStatus] || map.inactive;
     return (
       <span style={{
-        background: style.bg, color: style.color,
-        border: `1px solid ${style.border}`,
-        borderRadius: '6px', padding: '3px 10px',
-        fontSize: '12px', fontWeight: '600',
+        fontSize: '12px', fontWeight: '600', padding: '4px 10px',
+        borderRadius: '6px', background: style.bg,
+        color: style.color, border: `1px solid ${style.border}`,
       }}>
-        {status}
+        {style.label}
       </span>
     );
   };
@@ -125,50 +146,33 @@ const QuizDetails = () => {
           >
             ← Back
           </button>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h4 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 8px 0' }}>{quiz.title}</h4>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 10px', borderRadius: '6px', background: '#f0f0f0', color: '#333', letterSpacing: '1px' }}>
                   {quiz.quizCode}
                 </span>
-                <span style={{
-                  fontSize: '12px', fontWeight: '600', padding: '4px 10px', borderRadius: '6px',
-                  background: effectiveStatus === 'active' ? '#f0fdf4'
-                    : effectiveStatus === 'expired' ? '#fef2f2'
-                    : effectiveStatus === 'upcoming' ? '#eff6ff'
-                    : '#fafafa',
-                  color: effectiveStatus === 'active' ? '#16a34a'
-                    : effectiveStatus === 'expired' ? '#dc2626'
-                    : effectiveStatus === 'upcoming' ? '#2563eb'
-                    : '#888',
-                  border: `1px solid ${
-                    effectiveStatus === 'active' ? '#86efac'
-                    : effectiveStatus === 'expired' ? '#fca5a5'
-                    : effectiveStatus === 'upcoming' ? '#93c5fd'
-                    : '#e0e0e0'
-                  }`,
-                }}>
-                  {effectiveStatus === 'active' ? 'Active'
-                    : effectiveStatus === 'expired' ? 'Expired'
-                    : effectiveStatus === 'upcoming' ? 'Upcoming'
-                    : 'Inactive'}
-                </span>
+                {effectiveStatusBadge()}
                 <span style={{ fontSize: '12px', fontWeight: '500', padding: '4px 10px', borderRadius: '6px', background: '#fafafa', color: '#555', border: '1px solid #e0e0e0' }}>
                   {quiz.timeLimit} mins
                 </span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {effectiveStatus === 'expired' ? (
-                <span style={{
-                  padding: '9px 16px', borderRadius: '8px', background: '#fafafa',
-                  color: '#aaa', fontSize: '13px', fontWeight: '500', fontStyle: 'italic',
-                  display: 'flex', alignItems: 'center',
-                }}>
-                  Quiz period has ended
-                </span>
-              ) : (
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => navigate(`/teacher/quiz/${id}/edit`)}
+                style={{
+                  padding: '9px 16px', border: '1px solid #e0e0e0', borderRadius: '8px',
+                  background: '#fff', color: '#333', fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+                }}
+              >
+                Edit
+              </button>
+              {effectiveStatus !== 'expired' && (
                 <button
                   onClick={handleToggle}
                   style={{
@@ -198,8 +202,12 @@ const QuizDetails = () => {
             { label: 'Total Participants', value: participants.length },
             { label: 'Submitted', value: submittedCount },
             { label: 'Total Violations', value: violations.length },
+            { label: 'Questions', value: questions.length },
           ].map((stat) => (
-            <div key={stat.label} style={{ flex: 1, minWidth: '120px', background: '#fff', borderRadius: '12px', padding: '16px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+            <div key={stat.label} style={{
+              flex: 1, minWidth: '100px', background: '#fff',
+              borderRadius: '12px', padding: '16px', border: '1px solid #e0e0e0', textAlign: 'center',
+            }}>
               <p style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 4px 0', color: '#111' }}>{stat.value}</p>
               <p style={{ fontSize: '11px', color: '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{stat.label}</p>
             </div>
@@ -207,13 +215,13 @@ const QuizDetails = () => {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid #e0e0e0' }}>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid #e0e0e0', overflowX: 'auto' }}>
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               style={{
-                padding: '10px 16px', border: 'none', background: 'none',
+                padding: '10px 16px', border: 'none', background: 'none', whiteSpace: 'nowrap',
                 fontSize: '13px', fontWeight: activeTab === tab.key ? '700' : '500',
                 color: activeTab === tab.key ? '#111' : '#888', cursor: 'pointer',
                 borderBottom: activeTab === tab.key ? '2px solid #000' : '2px solid transparent',
@@ -236,78 +244,181 @@ const QuizDetails = () => {
 
         {/* Questions Tab */}
         {activeTab === 'questions' && (
-          <div>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              style={{
-                padding: '9px 16px', border: showForm ? '1px solid #e0e0e0' : 'none',
-                borderRadius: '8px', background: showForm ? '#fff' : '#000',
-                color: showForm ? '#333' : '#fff', fontSize: '13px',
-                fontWeight: '600', cursor: 'pointer', marginBottom: '16px',
-              }}
-            >
-              {showForm ? 'Cancel' : '+ Add Question'}
-            </button>
+  <div>
+    {/* Expired Notice */}
+    {isExpired && (
+      <div style={{
+        background: '#fef2f2', border: '1px solid #fca5a5',
+        borderRadius: '10px', padding: '12px 16px', marginBottom: '16px',
+        display: 'flex', alignItems: 'center', gap: '10px',
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <p style={{ fontSize: '13px', color: '#991b1b', margin: 0, fontWeight: '500' }}>
+          This quiz has expired. All question management is disabled.
+        </p>
+      </div>
+    )}
 
-            {showForm && (
-              <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', padding: '20px', marginBottom: '16px' }}>
-                <p style={{ fontSize: '14px', fontWeight: '700', margin: '0 0 16px 0' }}>Add New Question</p>
-                <QuestionForm quizId={id} onSuccess={() => { setShowForm(false); fetchQuestions(); }} />
-              </div>
-            )}
+    {/* Locked Notice - may submitted pero hindi expired */}
+    {!isExpired && isLocked && (
+      <div style={{
+        background: '#fffbeb', border: '1px solid #fcd34d',
+        borderRadius: '10px', padding: '12px 16px', marginBottom: '16px',
+        display: 'flex', alignItems: 'center', gap: '10px',
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <p style={{ fontSize: '13px', color: '#92400e', margin: 0, fontWeight: '500' }}>
+          <strong>{submittedCount} student{submittedCount > 1 ? 's have' : ' has'}</strong> already submitted. Adding and deleting questions is disabled to maintain accuracy. You can still edit existing questions.
+        </p>
+      </div>
+    )}
 
-            {questions.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 0', color: '#aaa' }}>
-                <p style={{ fontSize: '14px', margin: 0 }}>No questions yet. Add your first question!</p>
-              </div>
-            ) : (
-              questions.map((question, index) => (
-                <div key={question.id} style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', padding: '16px 20px', marginBottom: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
-                        Q{index + 1}
-                      </span>
-                      <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
-                        {question.questionType}
-                      </span>
-                      <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
-                        {question.points} pts
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteQuestion(question.id)}
-                      style={{
-                        padding: '5px 12px', border: '1px solid #fca5a5', borderRadius: '6px',
-                        background: '#fef2f2', color: '#dc2626', fontSize: '12px', cursor: 'pointer', fontWeight: '500',
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                  <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 10px 0', color: '#111' }}>
-                    {question.questionText}
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {question.choices?.map((choice) => (
-                      <span
-                        key={choice.id}
-                        style={{
-                          fontSize: '12px', fontWeight: '500', padding: '4px 10px', borderRadius: '6px',
-                          background: choice.isCorrect ? '#f0fdf4' : '#fafafa',
-                          color: choice.isCorrect ? '#16a34a' : '#555',
-                          border: `1px solid ${choice.isCorrect ? '#86efac' : '#e0e0e0'}`,
-                        }}
-                      >
-                        {choice.isCorrect ? '✓ ' : ''}{choice.choiceText}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
+    {/* Question Actions */}
+    {!isExpired && !isLocked && (
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => { setShowForm(!showForm); setEditData(null); }}
+          style={{
+            padding: '9px 16px',
+            border: showForm && !editData ? '1px solid #e0e0e0' : 'none',
+            borderRadius: '8px',
+            background: showForm && !editData ? '#fff' : '#000',
+            color: showForm && !editData ? '#333' : '#fff',
+            fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          }}
+        >
+          {showForm && !editData ? 'Cancel' : '+ Add Question'}
+        </button>
+        <button
+          onClick={() => alert('Upload Quiz feature coming soon!')}
+          style={{
+            padding: '9px 16px', border: '1px solid #e0e0e0', borderRadius: '8px',
+            background: '#fff', color: '#333', fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '6px',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Upload Quiz
+        </button>
+      </div>
+    )}
+
+    {/* Add/Edit Form */}
+    {showForm && !isExpired && (
+      <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', padding: '20px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <p style={{ fontSize: '14px', fontWeight: '700', margin: 0 }}>
+            {editData ? 'Edit Question' : 'Add New Question'}
+          </p>
+          <button
+            onClick={() => { setShowForm(false); setEditData(null); }}
+            style={{ border: 'none', background: 'none', fontSize: '13px', color: '#888', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+          >
+            Cancel
+          </button>
+        </div>
+        <QuestionForm
+          quizId={id}
+          editData={editData}
+          onSuccess={() => { setShowForm(false); setEditData(null); fetchQuestions(); }}
+        />
+      </div>
+    )}
+
+    {/* Questions List */}
+    {questions.length === 0 ? (
+      <div style={{
+        textAlign: 'center', padding: '48px 0', color: '#aaa',
+        background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0',
+      }}>
+        <p style={{ fontSize: '14px', margin: '0 0 4px 0', fontWeight: '600', color: '#555' }}>No questions yet</p>
+        <p style={{ fontSize: '13px', margin: 0, color: '#aaa' }}>Add questions manually or upload a file</p>
+      </div>
+    ) : (
+      questions.map((question, index) => (
+        <div key={question.id} style={{
+          background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0',
+          padding: '16px 20px', marginBottom: '10px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
+                Q{index + 1}
+              </span>
+              <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
+                {question.questionType}
+              </span>
+              <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
+                {question.points} pts
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {/* Edit — available hanggang hindi expired */}
+              {!isExpired && (
+                <button
+                  onClick={() => {
+                    setEditData(question);
+                    setShowForm(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  style={{
+                    padding: '5px 12px', border: '1px solid #e0e0e0', borderRadius: '6px',
+                    background: '#fff', color: '#333', fontSize: '12px', cursor: 'pointer', fontWeight: '500',
+                  }}
+                >
+                  Edit
+                </button>
+              )}
+
+              {/* Delete — disabled if may submitted or expired */}
+              {!isExpired && !isLocked && (
+                <button
+                  onClick={() => handleDeleteQuestion(question.id)}
+                  style={{
+                    padding: '5px 12px', border: '1px solid #fca5a5', borderRadius: '6px',
+                    background: '#fef2f2', color: '#dc2626', fontSize: '12px', cursor: 'pointer', fontWeight: '500',
+                  }}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
-        )}
+
+          <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 10px 0', color: '#111', lineHeight: '1.5' }}>
+            {question.questionText}
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {question.choices?.map((choice) => (
+              <span
+                key={choice.id}
+                style={{
+                  fontSize: '12px', fontWeight: '500', padding: '4px 10px', borderRadius: '6px',
+                  background: choice.isCorrect ? '#f0fdf4' : '#fafafa',
+                  color: choice.isCorrect ? '#16a34a' : '#555',
+                  border: `1px solid ${choice.isCorrect ? '#86efac' : '#e0e0e0'}`,
+                }}
+              >
+                {choice.isCorrect ? '✓ ' : ''}{choice.choiceText}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+)}
 
         {/* Participants Tab */}
         {activeTab === 'participants' && (
@@ -374,15 +485,14 @@ const QuizDetails = () => {
                 </thead>
                 <tbody>
                   {violations.length === 0 ? (
-                    <tr><td colSpan={5} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>No violations recorded</td></tr>
+                    <tr><td colSpan={6} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>No violations recorded</td></tr>
                   ) : (
                     violations.map((v, index) => (
                       <tr key={v.id}>
                         <td style={s.td}>{index + 1}</td>
                         <td style={{ ...s.td, fontWeight: '600' }}>
-                          {participantMap[v.sessionId]?.studentName || 'Unknown Student'}
+                          {participantMap[v.sessionId]?.studentName || 'Unknown'}
                         </td>
-
                         <td style={s.td}>
                           {participantMap[v.sessionId]?.studentId || '-'}
                         </td>
@@ -416,6 +526,7 @@ const QuizDetails = () => {
               { label: 'Manually Activated', value: quiz.isActive ? 'Yes' : 'No' },
               { label: 'Time Limit', value: `${quiz.timeLimit} mins` },
               { label: 'Max Violations', value: quiz.maxViolations },
+              { label: 'Allow Answer Review', value: quiz.allowReviewAnswers ? 'Yes' : 'No' },
               { label: 'Available From', value: formatDateTime(quiz.availableFrom) },
               { label: 'Available Until', value: formatDateTime(quiz.availableUntil) },
               { label: 'Randomize Questions', value: quiz.randomizeQuestions ? 'Yes' : 'No' },
@@ -431,10 +542,15 @@ const QuizDetails = () => {
                   alignItems: 'center',
                   padding: '14px 20px',
                   borderBottom: i === arr.length - 1 ? 'none' : '1px solid #f0f0f0',
+                  gap: '12px',
                 }}
               >
-                <span style={{ fontSize: '13px', color: '#888', fontWeight: '500' }}>{row.label}</span>
-                <span style={{ fontSize: '13px', color: '#111', fontWeight: '600', textAlign: 'right' }}>{row.value}</span>
+                <span style={{ fontSize: '13px', color: '#888', fontWeight: '500', flexShrink: 0 }}>
+                  {row.label}
+                </span>
+                <span style={{ fontSize: '13px', color: '#111', fontWeight: '600', textAlign: 'right' }}>
+                  {row.value}
+                </span>
               </div>
             ))}
           </div>

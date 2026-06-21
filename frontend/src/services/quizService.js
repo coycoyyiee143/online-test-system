@@ -50,6 +50,7 @@ export const createQuiz = async (userId, quizData) => {
     userId,
     quizCode,
     isActive: false,
+    allowReviewAnswers: !!quizData.allowReviewAnswers,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

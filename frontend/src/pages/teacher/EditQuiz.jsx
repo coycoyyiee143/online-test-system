@@ -1,35 +1,53 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { createQuiz } from '../../services/quizService';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getQuiz, updateQuiz } from '../../services/quizService';
 import Navbar from '../../components/teacher/Navbar';
 
-const CreateQuiz = () => {
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    timeLimit: 30,
-    maxViolations: 3,
-    randomizeQuestions: false,
-    randomizeChoices: false,
-    allowReviewAnswers: false,
-    availableFrom: '',
-    availableUntil: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { user } = useAuth();
+const EditQuiz = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const [form, setForm] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      try {
+        const quiz = await getQuiz(id);
+        if (!quiz) {
+          setError('Quiz not found.');
+          return;
+        }
+        setForm({
+          title: quiz.title || '',
+          description: quiz.description || '',
+          timeLimit: quiz.timeLimit || 30,
+          maxViolations: quiz.maxViolations || 3,
+          randomizeQuestions: !!quiz.randomizeQuestions,
+          randomizeChoices: !!quiz.randomizeChoices,
+          allowReviewAnswers: !!quiz.allowReviewAnswers,
+          availableFrom: quiz.availableFrom || '',
+          availableUntil: quiz.availableUntil || '',
+        });
+      } catch (err) {
+        setError('Error loading quiz.');
+      } finally {
+        setFetching(false);
+      }
+    };
+    fetchQuiz();
+  }, [id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const { id } = await createQuiz(user.uid, form);
+      await updateQuiz(id, form);
       navigate(`/teacher/quiz/${id}`);
     } catch (err) {
-      setError(err.message || 'Error creating quiz');
+      setError(err.message || 'Error updating quiz');
     } finally {
       setLoading(false);
     }
@@ -57,6 +75,27 @@ const CreateQuiz = () => {
     display: 'block',
   };
 
+  if (fetching) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '32px', height: '32px', border: '3px solid #e0e0e0', borderTop: '3px solid #000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+
+  if (!form) return (
+    <div style={{ minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' }}>
+      <Navbar />
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '28px 20px' }}>
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px',
+          padding: '14px 16px', fontSize: '13px', color: '#dc2626',
+        }}>
+          {error || 'Quiz not found.'}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' }}>
       <Navbar />
@@ -64,7 +103,7 @@ const CreateQuiz = () => {
 
         {/* Back Button */}
         <button
-          onClick={() => navigate('/teacher/dashboard')}
+          onClick={() => navigate(`/teacher/quiz/${id}`)}
           style={{
             border: 'none',
             background: 'none',
@@ -78,7 +117,7 @@ const CreateQuiz = () => {
             gap: '4px',
           }}
         >
-          ← Back to Dashboard
+          ← Back to Quiz
         </button>
 
         <div style={{
@@ -92,9 +131,9 @@ const CreateQuiz = () => {
             padding: '20px 24px',
             borderBottom: '1px solid #f0f0f0',
           }}>
-            <h5 style={{ fontSize: '17px', fontWeight: '700', margin: 0 }}>Create New Quiz</h5>
+            <h5 style={{ fontSize: '17px', fontWeight: '700', margin: 0 }}>Edit Quiz</h5>
             <p style={{ fontSize: '13px', color: '#888', margin: '4px 0 0 0' }}>
-              Fill in the details below to create a new quiz
+              Update the details below and save your changes
             </p>
           </div>
 
@@ -234,23 +273,42 @@ const CreateQuiz = () => {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '13px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: loading ? '#ccc' : '#000',
-                  color: '#fff',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {loading ? 'Creating...' : 'Create Quiz'}
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/teacher/quiz/${id}`)}
+                  style={{
+                    flex: 1,
+                    padding: '13px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    background: '#fff',
+                    color: '#333',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    flex: 2,
+                    padding: '13px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    background: loading ? '#ccc' : '#000',
+                    color: '#fff',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -259,4 +317,4 @@ const CreateQuiz = () => {
   );
 };
 
-export default CreateQuiz;
+export default EditQuiz;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getQuizByCode } from '../../services/quizService';
 import { startSession } from '../../services/sessionService';
 import { getQuestionsByQuiz } from '../../services/questionService';
@@ -388,7 +388,13 @@ const JoinQuiz = () => {
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+        <div style={{ textAlign: 'center', marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>
+            Already took this quiz?{' '}
+            <Link to="/check-result" style={{ color: '#000', fontWeight: '600', textDecoration: 'none' }}>
+              Check my result
+            </Link>
+          </p>
           <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>
             Are you a teacher?{' '}
             <a
