@@ -198,7 +198,12 @@ const Results = () => {
                   filtered.map((r, index) => (
                     <tr key={r.id}>
                       <td style={s.td}>{index + 1}</td>
-                      <td style={{ ...s.td, fontWeight: '600' }}>{r.studentName}</td>
+                      <td
+                        style={{ ...s.td, fontWeight: '600', cursor: 'pointer', color: '#000', textDecoration: 'underline' }}
+                        onClick={() => navigate(`/teacher/quiz/${id}/results/${r.sessionId}`)}
+                      >
+                        {r.studentName}
+                      </td>
                       <td style={s.td}>{r.studentId}</td>
                       <td style={s.td}>{r.section || '-'}</td>
                       <td style={s.td}>{r.earnedPoints} / {r.totalPoints}</td>

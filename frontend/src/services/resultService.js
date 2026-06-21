@@ -42,3 +42,14 @@ export const getResultsByQuiz = async (quizId) => {
     },
   };
 };
+
+// Get detailed result with answers
+export const getResultDetail = async (sessionId) => {
+  const answersQ = query(
+    collection(db, 'student_answers'),
+    where('sessionId', '==', sessionId)
+  );
+  const answersSnap = await getDocs(answersQ);
+  const answers = answersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return answers;
+};
