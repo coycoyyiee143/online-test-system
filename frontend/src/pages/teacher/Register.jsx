@@ -29,17 +29,82 @@ const Register = () => {
     }
   };
 
+  const inputStyle = {
+    border: '1px solid #e0e0e0',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    fontSize: '14px',
+    width: '100%',
+    outline: 'none',
+    background: '#fff',
+    boxSizing: 'border-box',
+    fontFamily: 'Inter, sans-serif',
+  };
+
+  const labelStyle = {
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: '0.6px',
+    marginBottom: '6px',
+    display: 'block',
+  };
+
   if (success) {
     return (
-      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
-        <div className="card shadow p-5 text-center" style={{ maxWidth: '420px', width: '100%' }}>
-          <div style={{ fontSize: '60px' }}>⏳</div>
-          <h4 className="fw-bold text-warning mt-3">Account Pending Approval</h4>
-          <p className="text-muted">
+      <div style={{
+        minHeight: '100vh',
+        background: '#f5f5f5',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        fontFamily: 'Inter, sans-serif',
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px',
+          padding: '40px 32px',
+          width: '100%',
+          maxWidth: '380px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            background: '#fffbeb',
+            border: '1px solid #fcd34d',
+            borderRadius: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            margin: '0 auto 20px',
+          }}>
+            ⏳
+          </div>
+          <h4 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 8px 0' }}>
+            Pending Approval
+          </h4>
+          <p style={{ fontSize: '13px', color: '#888', margin: '0 0 24px 0', lineHeight: '1.6' }}>
             Your account has been created and is waiting for admin approval.
-            You will be able to login once your account is approved.
+            You will be able to login once approved.
           </p>
-          <Link to="/teacher/login" className="btn btn-primary mt-2">
+          <Link
+            to="/teacher/login"
+            style={{
+              display: 'block',
+              padding: '12px',
+              background: '#000',
+              color: '#fff',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              textDecoration: 'none',
+            }}
+          >
             Back to Login
           </Link>
         </div>
@@ -48,76 +113,137 @@ const Register = () => {
   }
 
   return (
-    <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
-      <div className="card shadow p-4" style={{ maxWidth: '420px', width: '100%' }}>
-        <div className="text-center mb-4">
-          <div style={{ fontSize: '50px' }}>📝</div>
-          <h2 className="fw-bold text-primary">QuizSystem</h2>
-          <p className="text-muted">Create Teacher Account</p>
+    <div style={{
+      minHeight: '100vh',
+      background: '#f5f5f5',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+      fontFamily: 'Inter, sans-serif',
+    }}>
+      <div style={{
+        background: '#fff',
+        borderRadius: '16px',
+        padding: '36px 32px',
+        width: '100%',
+        maxWidth: '380px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+      }}>
+        {/* Header */}
+        <div style={{ marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: '700', margin: '0 0 4px 0' }}>
+            Create Account
+          </h2>
+          <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>
+            Register as a teacher
+          </p>
         </div>
 
-        {error && <div className="alert alert-danger">{error}</div>}
-
-        <div className="alert alert-info small">
-          ℹ️ Your account will need admin approval before you can login.
+        {/* Notice */}
+        <div style={{
+          background: '#f8fafc',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          padding: '10px 14px',
+          fontSize: '12px',
+          color: '#555',
+          marginBottom: '20px',
+          lineHeight: '1.5',
+        }}>
+          Your account requires admin approval before you can login.
         </div>
+
+        {error && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fca5a5',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            fontSize: '13px',
+            color: '#dc2626',
+            marginBottom: '16px',
+          }}>
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleRegister}>
-          <div className="mb-3">
-            <label className="form-label fw-bold">Full Name</label>
+          <div style={{ marginBottom: '14px' }}>
+            <label style={labelStyle}>Full Name</label>
             <input
               type="text"
-              className="form-control"
               placeholder="Enter your name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              style={inputStyle}
               required
             />
           </div>
-          <div className="mb-3">
-            <label className="form-label fw-bold">Email</label>
+
+          <div style={{ marginBottom: '14px' }}>
+            <label style={labelStyle}>Email</label>
             <input
               type="email"
-              className="form-control"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              style={inputStyle}
               required
             />
           </div>
-          <div className="mb-3">
-            <label className="form-label fw-bold">Password</label>
+
+          <div style={{ marginBottom: '14px' }}>
+            <label style={labelStyle}>Password</label>
             <input
               type="password"
-              className="form-control"
               placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              style={inputStyle}
               required
             />
           </div>
-          <div className="mb-4">
-            <label className="form-label fw-bold">Confirm Password</label>
+
+          <div style={{ marginBottom: '24px' }}>
+            <label style={labelStyle}>Confirm Password</label>
             <input
               type="password"
-              className="form-control"
               placeholder="Confirm password"
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
+              style={inputStyle}
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '13px',
+              border: 'none',
+              borderRadius: '8px',
+              background: loading ? '#ccc' : '#000',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {loading ? 'Registering...' : 'Create Account'}
           </button>
         </form>
 
-        <div className="text-center mt-3">
-          <small className="text-muted">
-            Already have an account?{' '}
-            <Link to="/teacher/login" className="text-primary">Login here</Link>
-          </small>
-        </div>
+        <div style={{ height: '1px', background: '#f0f0f0', margin: '20px 0' }} />
+
+        <p style={{ fontSize: '13px', color: '#888', margin: 0, textAlign: 'center' }}>
+          Already have an account?{' '}
+          <Link to="/teacher/login" style={{ color: '#000', fontWeight: '600', textDecoration: 'none' }}>
+            Login here
+          </Link>
+        </p>
       </div>
     </div>
   );
