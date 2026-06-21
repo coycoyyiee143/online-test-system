@@ -20,19 +20,19 @@ const QuizDetails = () => {
 
 
   const fetchQuiz = useCallback(async () => {
-    try { const data = await getQuiz(id); setQuiz(data); } catch (e) {}
+    try { const data = await getQuiz(id); setQuiz(data); } catch (e) { }
   }, [id]);
 
   const fetchQuestions = useCallback(async () => {
-    try { const data = await getQuestionsByQuiz(id); setQuestions(data); } catch (e) {}
+    try { const data = await getQuestionsByQuiz(id); setQuestions(data); } catch (e) { }
   }, [id]);
 
   const fetchParticipants = useCallback(async () => {
-    try { const data = await getSessionsByQuiz(id); setParticipants(data); } catch (e) {}
+    try { const data = await getSessionsByQuiz(id); setParticipants(data); } catch (e) { }
   }, [id]);
 
   const fetchViolations = useCallback(async () => {
-    try { const data = await getViolationsByQuiz(id); setViolations(data); } catch (e) {}
+    try { const data = await getViolationsByQuiz(id); setViolations(data); } catch (e) { }
   }, [id]);
 
   useEffect(() => {
@@ -43,11 +43,11 @@ const QuizDetails = () => {
 
   const handleDeleteQuestion = async (questionId) => {
     if (!window.confirm('Delete this question?')) return;
-    try { await deleteQuestion(questionId); fetchQuestions(); } catch (e) {}
+    try { await deleteQuestion(questionId); fetchQuestions(); } catch (e) { }
   };
 
   const handleToggle = async () => {
-    try { await toggleQuizActive(id, quiz.isActive); fetchQuiz(); } catch (e) {}
+    try { await toggleQuizActive(id, quiz.isActive); fetchQuiz(); } catch (e) { }
   };
 
   const submittedCount = participants.filter((p) => p.status === 'submitted').length;
@@ -244,181 +244,181 @@ const QuizDetails = () => {
 
         {/* Questions Tab */}
         {activeTab === 'questions' && (
-  <div>
-    {/* Expired Notice */}
-    {isExpired && (
-      <div style={{
-        background: '#fef2f2', border: '1px solid #fca5a5',
-        borderRadius: '10px', padding: '12px 16px', marginBottom: '16px',
-        display: 'flex', alignItems: 'center', gap: '10px',
-      }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        <p style={{ fontSize: '13px', color: '#991b1b', margin: 0, fontWeight: '500' }}>
-          This quiz has expired. All question management is disabled.
-        </p>
-      </div>
-    )}
+          <div>
+            {/* Expired Notice */}
+            {isExpired && (
+              <div style={{
+                background: '#fef2f2', border: '1px solid #fca5a5',
+                borderRadius: '10px', padding: '12px 16px', marginBottom: '16px',
+                display: 'flex', alignItems: 'center', gap: '10px',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <p style={{ fontSize: '13px', color: '#991b1b', margin: 0, fontWeight: '500' }}>
+                  This quiz has expired. All question management is disabled.
+                </p>
+              </div>
+            )}
 
-    {/* Locked Notice - may submitted pero hindi expired */}
-    {!isExpired && isLocked && (
-      <div style={{
-        background: '#fffbeb', border: '1px solid #fcd34d',
-        borderRadius: '10px', padding: '12px 16px', marginBottom: '16px',
-        display: 'flex', alignItems: 'center', gap: '10px',
-      }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        <p style={{ fontSize: '13px', color: '#92400e', margin: 0, fontWeight: '500' }}>
-          <strong>{submittedCount} student{submittedCount > 1 ? 's have' : ' has'}</strong> already submitted. Adding and deleting questions is disabled to maintain accuracy. You can still edit existing questions.
-        </p>
-      </div>
-    )}
+            {/* Locked Notice - may submitted pero hindi expired */}
+            {!isExpired && isLocked && (
+              <div style={{
+                background: '#fffbeb', border: '1px solid #fcd34d',
+                borderRadius: '10px', padding: '12px 16px', marginBottom: '16px',
+                display: 'flex', alignItems: 'center', gap: '10px',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <p style={{ fontSize: '13px', color: '#92400e', margin: 0, fontWeight: '500' }}>
+                  <strong>{submittedCount} student{submittedCount > 1 ? 's have' : ' has'}</strong> already submitted. Adding and deleting questions is disabled to maintain accuracy. You can still edit existing questions.
+                </p>
+              </div>
+            )}
 
-    {/* Question Actions */}
-    {!isExpired && !isLocked && (
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => { setShowForm(!showForm); setEditData(null); }}
-          style={{
-            padding: '9px 16px',
-            border: showForm && !editData ? '1px solid #e0e0e0' : 'none',
-            borderRadius: '8px',
-            background: showForm && !editData ? '#fff' : '#000',
-            color: showForm && !editData ? '#333' : '#fff',
-            fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-          }}
-        >
-          {showForm && !editData ? 'Cancel' : '+ Add Question'}
-        </button>
-        <button
-          onClick={() => alert('Upload Quiz feature coming soon!')}
-          style={{
-            padding: '9px 16px', border: '1px solid #e0e0e0', borderRadius: '8px',
-            background: '#fff', color: '#333', fontSize: '13px', fontWeight: '500', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: '6px',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          Upload Quiz
-        </button>
-      </div>
-    )}
-
-    {/* Add/Edit Form */}
-    {showForm && !isExpired && (
-      <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', padding: '20px', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <p style={{ fontSize: '14px', fontWeight: '700', margin: 0 }}>
-            {editData ? 'Edit Question' : 'Add New Question'}
-          </p>
-          <button
-            onClick={() => { setShowForm(false); setEditData(null); }}
-            style={{ border: 'none', background: 'none', fontSize: '13px', color: '#888', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-          >
-            Cancel
-          </button>
-        </div>
-        <QuestionForm
-          quizId={id}
-          editData={editData}
-          onSuccess={() => { setShowForm(false); setEditData(null); fetchQuestions(); }}
-        />
-      </div>
-    )}
-
-    {/* Questions List */}
-    {questions.length === 0 ? (
-      <div style={{
-        textAlign: 'center', padding: '48px 0', color: '#aaa',
-        background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0',
-      }}>
-        <p style={{ fontSize: '14px', margin: '0 0 4px 0', fontWeight: '600', color: '#555' }}>No questions yet</p>
-        <p style={{ fontSize: '13px', margin: 0, color: '#aaa' }}>Add questions manually or upload a file</p>
-      </div>
-    ) : (
-      questions.map((question, index) => (
-        <div key={question.id} style={{
-          background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0',
-          padding: '16px 20px', marginBottom: '10px',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
-                Q{index + 1}
-              </span>
-              <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
-                {question.questionType}
-              </span>
-              <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
-                {question.points} pts
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {/* Edit — available hanggang hindi expired */}
-              {!isExpired && (
+            {/* Question Actions */}
+            {!isExpired && !isLocked && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 <button
-                  onClick={() => {
-                    setEditData(question);
-                    setShowForm(true);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
+                  onClick={() => { setShowForm(!showForm); setEditData(null); }}
                   style={{
-                    padding: '5px 12px', border: '1px solid #e0e0e0', borderRadius: '6px',
-                    background: '#fff', color: '#333', fontSize: '12px', cursor: 'pointer', fontWeight: '500',
+                    padding: '9px 16px',
+                    border: showForm && !editData ? '1px solid #e0e0e0' : 'none',
+                    borderRadius: '8px',
+                    background: showForm && !editData ? '#fff' : '#000',
+                    color: showForm && !editData ? '#333' : '#fff',
+                    fontSize: '13px', fontWeight: '600', cursor: 'pointer',
                   }}
                 >
-                  Edit
+                  {showForm && !editData ? 'Cancel' : '+ Add Question'}
                 </button>
-              )}
-
-              {/* Delete — disabled if may submitted or expired */}
-              {!isExpired && !isLocked && (
                 <button
-                  onClick={() => handleDeleteQuestion(question.id)}
+                  onClick={() => alert('Upload Quiz feature coming soon!')}
                   style={{
-                    padding: '5px 12px', border: '1px solid #fca5a5', borderRadius: '6px',
-                    background: '#fef2f2', color: '#dc2626', fontSize: '12px', cursor: 'pointer', fontWeight: '500',
+                    padding: '9px 16px', border: '1px solid #e0e0e0', borderRadius: '8px',
+                    background: '#fff', color: '#333', fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '6px',
                   }}
                 >
-                  Delete
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  Upload Quiz
                 </button>
-              )}
-            </div>
-          </div>
+              </div>
+            )}
 
-          <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 10px 0', color: '#111', lineHeight: '1.5' }}>
-            {question.questionText}
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {question.choices?.map((choice) => (
-              <span
-                key={choice.id}
-                style={{
-                  fontSize: '12px', fontWeight: '500', padding: '4px 10px', borderRadius: '6px',
-                  background: choice.isCorrect ? '#f0fdf4' : '#fafafa',
-                  color: choice.isCorrect ? '#16a34a' : '#555',
-                  border: `1px solid ${choice.isCorrect ? '#86efac' : '#e0e0e0'}`,
-                }}
-              >
-                {choice.isCorrect ? '✓ ' : ''}{choice.choiceText}
-              </span>
-            ))}
+            {/* Add/Edit Form */}
+            {showForm && !isExpired && (
+              <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', padding: '20px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <p style={{ fontSize: '14px', fontWeight: '700', margin: 0 }}>
+                    {editData ? 'Edit Question' : 'Add New Question'}
+                  </p>
+                  <button
+                    onClick={() => { setShowForm(false); setEditData(null); }}
+                    style={{ border: 'none', background: 'none', fontSize: '13px', color: '#888', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <QuestionForm
+                  quizId={id}
+                  editData={editData}
+                  onSuccess={() => { setShowForm(false); setEditData(null); fetchQuestions(); }}
+                />
+              </div>
+            )}
+
+            {/* Questions List */}
+            {questions.length === 0 ? (
+              <div style={{
+                textAlign: 'center', padding: '48px 0', color: '#aaa',
+                background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0',
+              }}>
+                <p style={{ fontSize: '14px', margin: '0 0 4px 0', fontWeight: '600', color: '#555' }}>No questions yet</p>
+                <p style={{ fontSize: '13px', margin: 0, color: '#aaa' }}>Add questions manually or upload a file</p>
+              </div>
+            ) : (
+              questions.map((question, index) => (
+                <div key={question.id} style={{
+                  background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0',
+                  padding: '16px 20px', marginBottom: '10px',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
+                        Q{index + 1}
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
+                        {question.questionType}
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
+                        {question.points} pts
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {/* Edit — available hanggang hindi expired */}
+                      {!isExpired && (
+                        <button
+                          onClick={() => {
+                            setEditData(question);
+                            setShowForm(true);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          style={{
+                            padding: '5px 12px', border: '1px solid #e0e0e0', borderRadius: '6px',
+                            background: '#fff', color: '#333', fontSize: '12px', cursor: 'pointer', fontWeight: '500',
+                          }}
+                        >
+                          Edit
+                        </button>
+                      )}
+
+                      {/* Delete — disabled if may submitted or expired */}
+                      {!isExpired && !isLocked && (
+                        <button
+                          onClick={() => handleDeleteQuestion(question.id)}
+                          style={{
+                            padding: '5px 12px', border: '1px solid #fca5a5', borderRadius: '6px',
+                            background: '#fef2f2', color: '#dc2626', fontSize: '12px', cursor: 'pointer', fontWeight: '500',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 10px 0', color: '#111', lineHeight: '1.5' }}>
+                    {question.questionText}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {question.choices?.map((choice) => (
+                      <span
+                        key={choice.id}
+                        style={{
+                          fontSize: '12px', fontWeight: '500', padding: '4px 10px', borderRadius: '6px',
+                          background: choice.isCorrect ? '#f0fdf4' : '#fafafa',
+                          color: choice.isCorrect ? '#16a34a' : '#555',
+                          border: `1px solid ${choice.isCorrect ? '#86efac' : '#e0e0e0'}`,
+                        }}
+                      >
+                        {choice.isCorrect ? '✓ ' : ''}{choice.choiceText}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-        </div>
-      ))
-    )}
-  </div>
-)}
+        )}
 
         {/* Participants Tab */}
         {activeTab === 'participants' && (
@@ -526,11 +526,11 @@ const QuizDetails = () => {
               { label: 'Manually Activated', value: quiz.isActive ? 'Yes' : 'No' },
               { label: 'Time Limit', value: `${quiz.timeLimit} mins` },
               { label: 'Max Violations', value: quiz.maxViolations },
-              { label: 'Allow Answer Review', value: quiz.allowReviewAnswers ? 'Yes' : 'No' },
               { label: 'Available From', value: formatDateTime(quiz.availableFrom) },
               { label: 'Available Until', value: formatDateTime(quiz.availableUntil) },
               { label: 'Randomize Questions', value: quiz.randomizeQuestions ? 'Yes' : 'No' },
               { label: 'Randomize Choices', value: quiz.randomizeChoices ? 'Yes' : 'No' },
+              { label: 'Allow Answer Review', value: quiz.allowReviewAnswers ? 'Yes' : 'No' },
               { label: 'Created At', value: formatDateTime(quiz.createdAt) },
               { label: 'Last Updated', value: formatDateTime(quiz.updatedAt) },
             ].map((row, i, arr) => (

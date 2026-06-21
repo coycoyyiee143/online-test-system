@@ -2,6 +2,8 @@ import { db } from '../firebase/config';
 import {
   collection,
   addDoc,
+  updateDoc,
+  doc,
   getDocs,
   query,
   where,
@@ -52,4 +54,69 @@ export const getResultDetail = async (sessionId) => {
   const answersSnap = await getDocs(answersQ);
   const answers = answersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   return answers;
+};
+
+// Recalculate and overwrite the score for a single result document.
+// Uses the exact same scoring rule as calculateScore in answerService.js:
+// essay questions are skipped, a choice question is correct only if the
+// student's choiceId matches the question's current correct choice.
+const computeScoreFromAnswers = (questions, answers) => {
+  let totalPoints = 0;
+  let earnedPoints = 0;
+
+  for (const question of questions) {
+    totalPoints += question.points;
+    if (question.questionType !== 'essay') {
+      const answer = answers.find((a) => a.questionId === question.id);
+      if (answer && answer.choiceId) {
+        const correctChoice = question.choices.find((c) => c.isCorrect);
+        if (correctChoice && answer.choiceId === correctChoice.id) {
+          earnedPoints += question.points;
+        }
+      }
+    }
+  }
+
+  const percentage = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+  return {
+    totalPoints,
+    earnedPoints,
+    percentage: Math.round(percentage * 100) / 100,
+    remarks: percentage >= 60 ? 'Passed' : 'Failed',
+  };
+};
+
+// Recalculate every saved result for a quiz, using its current questions
+// (i.e. current correct answers / points). Call this after a question is
+// edited so past submissions reflect the corrected answer key.
+//
+// This intentionally changes scores for students who already submitted —
+// that's the point: if the answer key was wrong, the recorded score was wrong.
+export const recalculateResultsForQuiz = async (quizId, questions) => {
+  const resultsQ = query(collection(db, 'quiz_results'), where('quizId', '==', quizId));
+  const resultsSnap = await getDocs(resultsQ);
+  const results = resultsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  for (const result of results) {
+    if (!result.sessionId) continue;
+
+    const answersQ = query(
+      collection(db, 'student_answers'),
+      where('sessionId', '==', result.sessionId)
+    );
+    const answersSnap = await getDocs(answersQ);
+    const answers = answersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    const score = computeScoreFromAnswers(questions, answers);
+
+    await updateDoc(doc(db, 'quiz_results', result.id), {
+      totalPoints: score.totalPoints,
+      earnedPoints: score.earnedPoints,
+      percentage: score.percentage,
+      remarks: score.remarks,
+      recalculatedAt: serverTimestamp(),
+    });
+  }
+
+  return results.length;
 };
