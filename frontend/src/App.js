@@ -20,11 +20,12 @@ import Results from './pages/teacher/Results';
 import ResultDetail from './pages/teacher/ResultDetail';
 import EditQuiz from './pages/teacher/EditQuiz';
 
-
 // Admin Pages
 import AdminLogin from './pages/admin/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminQuizQuestions from './pages/admin/AdminQuizQuestions';
+import ActivityLog from './pages/admin/ActivityLog';
+import StudentHistory from './pages/admin/StudentHistory';
 
 // Shared
 import NotFound from './pages/NotFound';
@@ -70,11 +71,15 @@ function App() {
             <Route path="/admin/dashboard" element={
               <PrivateRoute role="admin"><AdminDashboard /></PrivateRoute>
             } />
-
             <Route path="/admin/quiz/:quizId/questions" element={
               <PrivateRoute role="admin"><AdminQuizQuestions /></PrivateRoute>
             } />
-
+            <Route path="/admin/activity-log" element={
+              <PrivateRoute role="admin"><ActivityLog /></PrivateRoute>
+            } />
+            <Route path="/admin/student/:studentId" element={
+              <PrivateRoute role="admin"><StudentHistory /></PrivateRoute>
+            } />
 
             {/* 404 */}
             <Route path="*" element={<NotFound />} />

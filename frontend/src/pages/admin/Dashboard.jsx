@@ -1,24 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllTeachers, approveTeacher, rejectTeacher, getAllQuizzes } from '../../services/adminService';
+import { useAuth } from '../../context/AuthContext';
+import { getAllTeachers, approveTeacher, rejectTeacher, getAllQuizzes, adminDeleteQuiz, getAllStudents } from '../../services/adminService';
 import { getQuizEffectiveStatus } from '../../services/quizService';
 import AdminNavbar from '../../components/admin/Navbar';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { userData } = useAuth();
   const [teachers, setTeachers] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [studentSearch, setStudentSearch] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     try {
-      const [teachersData, quizzesData] = await Promise.all([
+      const [teachersData, quizzesData, studentsData] = await Promise.all([
         getAllTeachers(),
         getAllQuizzes(),
+        getAllStudents(),
       ]);
       setTeachers(teachersData);
       setQuizzes(quizzesData);
+      setStudents(studentsData);
     } catch (e) {
     } finally {
       setLoading(false);
@@ -27,13 +33,27 @@ const AdminDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleApprove = async (uid) => {
-    try { await approveTeacher(uid); fetchData(); } catch (e) {}
+  const handleApprove = async (teacher) => {
+    try {
+      await approveTeacher(teacher.uid, userData?.uid, userData?.name, teacher.name);
+      fetchData();
+    } catch (e) {}
   };
 
-  const handleReject = async (uid) => {
+  const handleReject = async (teacher) => {
     if (!window.confirm('Are you sure you want to reject this teacher?')) return;
-    try { await rejectTeacher(uid); fetchData(); } catch (e) {}
+    try {
+      await rejectTeacher(teacher.uid, userData?.uid, userData?.name, teacher.name);
+      fetchData();
+    } catch (e) {}
+  };
+
+  const handleDeleteQuiz = async (quiz) => {
+    if (!window.confirm(`Are you sure you want to delete "${quiz.title}"? This cannot be undone.`)) return;
+    try {
+      await adminDeleteQuiz(quiz.id, userData?.uid, userData?.name, quiz.title);
+      fetchData();
+    } catch (e) {}
   };
 
   const pending = teachers.filter((t) => t.status === 'pending');
@@ -94,6 +114,7 @@ const AdminDashboard = () => {
     { key: 'approved', label: `Approved`, count: approved.length },
     { key: 'rejected', label: `Rejected`, count: rejected.length },
     { key: 'quizzes', label: `Quizzes`, count: quizzes.length },
+    { key: 'students', label: `Students`, count: students.length },
   ];
 
   const statusBadge = (status) => {
@@ -148,11 +169,35 @@ const AdminDashboard = () => {
       <div style={s.container}>
 
         {/* Header */}
-        <div style={{ marginBottom: '24px' }}>
-          <h4 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Dashboard</h4>
-          <p style={{ fontSize: '13px', color: '#888', margin: '4px 0 0 0' }}>
-            Manage teachers and monitor quizzes
-          </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h4 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Dashboard</h4>
+            <p style={{ fontSize: '13px', color: '#888', margin: '4px 0 0 0' }}>
+              Manage teachers and monitor quizzes
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/admin/activity-log')}
+            style={{
+              padding: '9px 16px',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              background: '#fff',
+              color: '#333',
+              fontSize: '13px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 8v4l3 3" />
+              <circle cx="12" cy="12" r="10" />
+            </svg>
+            Activity Log
+          </button>
         </div>
 
         {/* Stats */}
@@ -249,7 +294,7 @@ const AdminDashboard = () => {
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
-                      onClick={() => handleApprove(teacher.uid)}
+                      onClick={() => handleApprove(teacher)}
                       style={{
                         padding: '8px 16px',
                         border: 'none',
@@ -264,7 +309,7 @@ const AdminDashboard = () => {
                       Approve
                     </button>
                     <button
-                      onClick={() => handleReject(teacher.uid)}
+                      onClick={() => handleReject(teacher)}
                       style={{
                         padding: '8px 16px',
                         border: '1px solid #e0e0e0',
@@ -312,7 +357,7 @@ const AdminDashboard = () => {
                       <td style={s.td}>{statusBadge('approved')}</td>
                       <td style={s.td}>
                         <button
-                          onClick={() => handleReject(teacher.uid)}
+                          onClick={() => handleReject(teacher)}
                           style={{
                             padding: '6px 12px',
                             border: '1px solid #e0e0e0',
@@ -361,7 +406,7 @@ const AdminDashboard = () => {
                       <td style={s.td}>{statusBadge('rejected')}</td>
                       <td style={s.td}>
                         <button
-                          onClick={() => handleApprove(teacher.uid)}
+                          onClick={() => handleApprove(teacher)}
                           style={{
                             padding: '6px 12px',
                             border: 'none',
@@ -390,7 +435,7 @@ const AdminDashboard = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['#', 'Title', 'Quiz Code', 'Status', 'Time Limit'].map((h) => (
+                  {['#', 'Title', 'Created By', 'Quiz Code', 'Status', 'Time Limit', 'Action'].map((h) => (
                     <th key={h} style={s.th}>{h}</th>
                   ))}
                 </tr>
@@ -398,7 +443,7 @@ const AdminDashboard = () => {
               <tbody>
                 {quizzes.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>
+                    <td colSpan={7} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>
                       No quizzes yet
                     </td>
                   </tr>
@@ -413,6 +458,7 @@ const AdminDashboard = () => {
                     >
                       <td style={s.td}>{index + 1}</td>
                       <td style={{ ...s.td, fontWeight: '600' }}>{quiz.title}</td>
+                      <td style={s.td}>{quiz.teacherName}</td>
                       <td style={s.td}>
                         <span style={{
                           background: '#f0f0f0',
@@ -427,11 +473,111 @@ const AdminDashboard = () => {
                       </td>
                       <td style={s.td}>{quizStatusBadge(quiz)}</td>
                       <td style={s.td}>{quiz.timeLimit} mins</td>
+                      <td style={s.td}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteQuiz(quiz);
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            border: '1px solid #fca5a5',
+                            borderRadius: '6px',
+                            background: '#fef2f2',
+                            color: '#dc2626',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            fontWeight: '500',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Students Tab */}
+        {activeTab === 'students' && (
+          <div>
+            <input
+              type="text"
+              placeholder="Search by name or student ID..."
+              value={studentSearch}
+              onChange={(e) => setStudentSearch(e.target.value)}
+              style={{
+                border: '1px solid #e0e0e0', borderRadius: '8px', padding: '9px 14px',
+                fontSize: '13px', outline: 'none', background: '#fff',
+                fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box',
+                marginBottom: '16px',
+              }}
+            />
+            <div style={s.tableWrap}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['#', 'Name', 'Student ID', 'Section', 'Quizzes Taken', 'Avg Score', 'Passed', 'Failed'].map((h) => (
+                      <th key={h} style={s.th}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {students
+                    .filter((st) =>
+                      st.studentName?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                      st.studentId?.toLowerCase().includes(studentSearch.toLowerCase())
+                    ).length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>
+                        No students found
+                      </td>
+                    </tr>
+                  ) : (
+                    students
+                      .filter((st) =>
+                        st.studentName?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                        st.studentId?.toLowerCase().includes(studentSearch.toLowerCase())
+                      )
+                      .map((st, index) => (
+                        <tr
+                          key={st.studentId}
+                          onClick={() => navigate(`/admin/student/${st.studentId}`)}
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <td style={s.td}>{index + 1}</td>
+                          <td style={{ ...s.td, fontWeight: '600' }}>{st.studentName}</td>
+                          <td style={s.td}>{st.studentId}</td>
+                          <td style={s.td}>{st.section || '-'}</td>
+                          <td style={s.td}>{st.totalQuizzes}</td>
+                          <td style={s.td}>{st.averagePercentage}%</td>
+                          <td style={s.td}>
+                            <span style={{
+                              fontSize: '12px', fontWeight: '700', padding: '3px 10px', borderRadius: '6px',
+                              background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac',
+                            }}>
+                              {st.passed}
+                            </span>
+                          </td>
+                          <td style={s.td}>
+                            <span style={{
+                              fontSize: '12px', fontWeight: '700', padding: '3px 10px', borderRadius: '6px',
+                              background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5',
+                            }}>
+                              {st.failed}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

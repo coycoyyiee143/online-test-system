@@ -18,7 +18,6 @@ const QuizDetails = () => {
   const navigate = useNavigate();
   const [editData, setEditData] = useState(null);
 
-
   const fetchQuiz = useCallback(async () => {
     try { const data = await getQuiz(id); setQuiz(data); } catch (e) { }
   }, [id]);
@@ -87,6 +86,77 @@ const QuizDetails = () => {
     );
   };
 
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getCountdown = () => {
+    if (!quiz) return null;
+
+    const parseDate = (val) => {
+      if (!val) return null;
+      if (val?.toDate) return val.toDate();
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    const from = parseDate(quiz.availableFrom);
+    const until = parseDate(quiz.availableUntil);
+
+    const formatDiff = (ms) => {
+      if (ms <= 0) return null;
+      const totalSeconds = Math.floor(ms / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+      if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+      return `${minutes}m ${seconds}s`;
+    };
+
+    const formatAgo = (ms) => {
+      const totalSeconds = Math.floor(ms / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+      if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    };
+
+    if (effectiveStatus === 'upcoming' && from) {
+      const diff = from - now;
+      const formatted = formatDiff(diff);
+      return formatted ? { label: 'Available in', value: formatted, color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' } : null;
+    }
+
+    if (effectiveStatus === 'active' && until) {
+      const diff = until - now;
+      const formatted = formatDiff(diff);
+      if (!formatted) return null;
+      const isUrgent = diff < 3600000; // less than 1 hour
+      return {
+        label: 'Closes in',
+        value: formatted,
+        color: isUrgent ? '#dc2626' : '#16a34a',
+        bg: isUrgent ? '#fef2f2' : '#f0fdf4',
+        border: isUrgent ? '#fca5a5' : '#86efac',
+      };
+    }
+
+    if (effectiveStatus === 'expired' && until) {
+      const diff = now - until;
+      return { label: 'Expired', value: formatAgo(diff), color: '#888', bg: '#fafafa', border: '#e0e0e0' };
+    }
+
+    return null;
+  };
+
   const s = {
     page: { minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' },
     container: { maxWidth: '1000px', margin: '0 auto', padding: '28px 20px' },
@@ -112,7 +182,6 @@ const QuizDetails = () => {
     { key: 'violations', label: 'Violations', count: violations.length },
     { key: 'details', label: 'Details', count: null },
   ];
-
 
   const effectiveStatusBadge = () => {
     const map = {
@@ -159,6 +228,31 @@ const QuizDetails = () => {
                   {quiz.timeLimit} mins
                 </span>
               </div>
+              {/* Countdown */}
+              {(() => {
+                const countdown = getCountdown();
+                if (!countdown) return null;
+                return (
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: countdown.bg,
+                    border: `1px solid ${countdown.border}`,
+                    marginTop: '8px',
+                  }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={countdown.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    <span style={{ fontSize: '12px', color: countdown.color, fontWeight: '600' }}>
+                      {countdown.label}: {countdown.value}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Action Buttons */}
