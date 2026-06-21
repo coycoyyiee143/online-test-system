@@ -31,13 +31,8 @@ const TakeQuiz = () => {
     setSubmitting(true);
 
     try {
-      // Calculate score
       const score = await calculateScore(currentSession.id, questions);
-
-      // Submit session
       await submitSession(currentSession.id);
-
-      // Save result
       await saveResult({
         quizId: currentQuiz.id,
         sessionId: currentSession.id,
@@ -51,7 +46,6 @@ const TakeQuiz = () => {
         totalViolations: violationCount,
       });
 
-      // Save result to localStorage for result page
       localStorage.setItem('quiz_result', JSON.stringify({
         ...score,
         studentName: currentSession.studentName,
@@ -62,9 +56,7 @@ const TakeQuiz = () => {
       navigate('/quiz/result');
     } catch (e) {
       console.error('Submit error:', e);
-      if (handleViolationRef.current) {
-        AntiCheat.init(handleViolationRef.current);
-      }
+      if (handleViolationRef.current) AntiCheat.init(handleViolationRef.current);
       submittingRef.current = false;
       setSubmitting(false);
     }
@@ -73,47 +65,28 @@ const TakeQuiz = () => {
   const handleViolation = useCallback(async (type, description) => {
     if (submittingRef.current) return;
     try {
-      const newCount = await logViolation(
-        currentSession.id,
-        currentQuiz.id,
-        type,
-        description
-      );
+      const newCount = await logViolation(currentSession.id, currentQuiz.id, type, description);
       setViolationCount(newCount);
       setShowWarning(true);
-
       if (newCount >= currentQuiz.maxViolations) {
-        if (handleSubmitRef.current) {
-          handleSubmitRef.current(true);
-        }
+        if (handleSubmitRef.current) handleSubmitRef.current(true);
       }
     } catch (e) {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSession, currentQuiz]);
 
-  useEffect(() => {
-    handleSubmitRef.current = handleSubmit;
-  }, [handleSubmit]);
+  useEffect(() => { handleSubmitRef.current = handleSubmit; }, [handleSubmit]);
+  useEffect(() => { handleViolationRef.current = handleViolation; }, [handleViolation]);
 
   useEffect(() => {
-    handleViolationRef.current = handleViolation;
-  }, [handleViolation]);
-
-  useEffect(() => {
-    if (!currentQuiz || !currentSession) {
-      navigate('/');
-      return;
-    }
+    if (!currentQuiz || !currentSession) { navigate('/'); return; }
     AntiCheat.init(handleViolation);
     return () => AntiCheat.destroy();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAnswer = useCallback(async (questionId, choiceId, essayAnswer) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: choiceId || essayAnswer,
-    }));
+    setAnswers((prev) => ({ ...prev, [questionId]: choiceId || essayAnswer }));
     try {
       await saveAnswer(currentSession.id, questionId, choiceId, essayAnswer);
     } catch (e) {}
@@ -122,9 +95,11 @@ const TakeQuiz = () => {
   if (!currentQuiz || !currentSession) return null;
 
   const currentQuestion = questions[currentIndex];
+  const answeredCount = Object.keys(answers).length;
+  const progress = questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
 
   return (
-    <div className="min-vh-100 bg-light">
+    <div style={{ minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' }}>
       {showWarning && (
         <ViolationWarning
           count={violationCount}
@@ -134,24 +109,59 @@ const TakeQuiz = () => {
       )}
 
       {/* Header */}
-      <div className="bg-primary text-white py-3 px-4 d-flex justify-content-between align-items-center">
+      <div style={{
+        background: '#fff',
+        borderBottom: '1px solid #e0e0e0',
+        padding: '14px 24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      }}>
         <div>
-          <h5 className="mb-0 fw-bold">{currentQuiz.title}</h5>
-          <small>{questions.length} Questions</small>
+          <h6 style={{ margin: 0, fontWeight: '700', fontSize: '15px' }}>
+            {currentQuiz.title}
+          </h6>
+          <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>
+            {questions.length} Questions
+          </p>
         </div>
-        <div className="d-flex align-items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {violationCount > 0 && (
-            <span className="badge bg-danger fs-6">
-              ⚠️ {violationCount} Violation(s)
-            </span>
+            <div style={{
+              background: '#fef2f2',
+              border: '1px solid #fca5a5',
+              borderRadius: '6px',
+              padding: '4px 10px',
+              fontSize: '12px',
+              color: '#dc2626',
+              fontWeight: '600',
+            }}>
+              {violationCount} Violation{violationCount > 1 ? 's' : ''}
+            </div>
           )}
           <Timer timeLimit={currentQuiz.timeLimit} onExpire={() => handleSubmit(true)} />
         </div>
       </div>
 
-      <div className="container py-4">
-        <div className="row g-4">
-          <div className="col-lg-8">
+      {/* Progress Bar */}
+      <div style={{ height: '3px', background: '#f0f0f0' }}>
+        <div style={{
+          height: '100%',
+          width: `${progress}%`,
+          background: '#000',
+          transition: 'width 0.3s',
+        }} />
+      </div>
+
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px 20px' }}>
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+
+          {/* Question Area */}
+          <div style={{ flex: 1, minWidth: 0 }}>
             {currentQuestion && (
               <QuestionCard
                 question={currentQuestion}
@@ -161,61 +171,119 @@ const TakeQuiz = () => {
                 total={questions.length}
               />
             )}
-            <div className="d-flex justify-content-between mt-3">
+
+            {/* Navigation */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
               <button
-                className="btn btn-outline-primary"
-                disabled={currentIndex === 0}
                 onClick={() => setCurrentIndex((i) => i - 1)}
+                disabled={currentIndex === 0}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  background: currentIndex === 0 ? '#f5f5f5' : '#fff',
+                  color: currentIndex === 0 ? '#bbb' : '#000',
+                  fontSize: '14px',
+                  cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
+                  fontWeight: '500',
+                }}
               >
-                ← Previous
+                Previous
               </button>
+
               {currentIndex < questions.length - 1 ? (
                 <button
-                  className="btn btn-primary"
                   onClick={() => setCurrentIndex((i) => i + 1)}
+                  style={{
+                    padding: '10px 24px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    background: '#000',
+                    color: '#fff',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                  }}
                 >
-                  Next →
+                  Next
                 </button>
               ) : (
                 <button
-                  className="btn btn-success"
                   onClick={() => handleSubmit(false)}
                   disabled={submitting}
+                  style={{
+                    padding: '10px 24px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    background: submitting ? '#ccc' : '#000',
+                    color: '#fff',
+                    fontSize: '14px',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    fontWeight: '600',
+                  }}
                 >
-                  {submitting ? 'Submitting...' : '✅ Submit Quiz'}
+                  {submitting ? 'Submitting...' : 'Submit Quiz'}
                 </button>
               )}
             </div>
           </div>
 
-          <div className="col-lg-4">
+          {/* Sidebar */}
+          <div style={{ width: '240px', flexShrink: 0 }}>
+
+            {/* Progress Card */}
+            <div style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '12px',
+              border: '1px solid #e0e0e0',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Progress
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: '700' }}>
+                  {answeredCount}/{questions.length}
+                </span>
+              </div>
+              <div style={{ height: '6px', background: '#f0f0f0', borderRadius: '999px', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${progress}%`,
+                  background: '#000',
+                  borderRadius: '999px',
+                  transition: 'width 0.3s',
+                }} />
+              </div>
+            </div>
+
+            {/* Question Palette */}
             <QuestionPalette
               questions={questions}
               answers={answers}
               currentIndex={currentIndex}
               onJump={setCurrentIndex}
             />
-            <div className="card mt-3 shadow-sm">
-              <div className="card-body text-center">
-                <p className="mb-2 fw-bold">
-                  {Object.keys(answers).length} / {questions.length} Answered
-                </p>
-                <div className="progress">
-                  <div
-                    className="progress-bar bg-success"
-                    style={{
-                      width: `${(Object.keys(answers).length / questions.length) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+
+            {/* Submit Button */}
             <button
-              className="btn btn-success w-100 mt-3 btn-lg"
               onClick={() => handleSubmit(false)}
               disabled={submitting}
+              style={{
+                width: '100%',
+                padding: '13px',
+                border: 'none',
+                borderRadius: '8px',
+                background: submitting ? '#ccc' : '#000',
+                color: '#fff',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                marginTop: '12px',
+              }}
             >
-              {submitting ? 'Submitting...' : '✅ Submit Quiz'}
+              {submitting ? 'Submitting...' : 'Submit Quiz'}
             </button>
           </div>
         </div>

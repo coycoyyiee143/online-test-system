@@ -16,6 +16,7 @@ import Dashboard from './pages/teacher/Dashboard';
 import CreateQuiz from './pages/teacher/CreateQuiz';
 import QuizDetails from './pages/teacher/QuizDetails';
 import Results from './pages/teacher/Results';
+import ResultDetail from './pages/teacher/ResultDetail';
 
 // Admin Pages
 import AdminLogin from './pages/admin/Login';
@@ -51,6 +52,9 @@ function App() {
             } />
             <Route path="/teacher/quiz/:id/results" element={
               <PrivateRoute role="teacher"><Results /></PrivateRoute>
+            } />
+            <Route path="/teacher/quiz/:quizId/results/:sessionId" element={
+              <PrivateRoute role="teacher"><ResultDetail /></PrivateRoute>
             } />
 
             {/* Admin Routes */}

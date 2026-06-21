@@ -29,26 +29,19 @@ const JoinQuiz = () => {
     setPendingSubmit(true);
 
     try {
-      // Find quiz by code
       const quiz = await getQuizByCode(quizCode);
       if (!quiz) {
-        setError('❌ Invalid or inactive quiz code.');
+        setError('Invalid or inactive quiz code.');
         setPendingSubmit(false);
         return;
       }
 
-      // Start session
       const { session, isResumed } = await startSession(
-        quiz.id,
-        studentName,
-        studentId,
-        section
+        quiz.id, studentName, studentId, section
       );
 
-      // Get questions
       let questions = await getQuestionsByQuiz(quiz.id);
 
-      // Randomize if needed
       if (quiz.randomizeQuestions) {
         questions = questions.sort(() => Math.random() - 0.5);
       }
@@ -59,171 +52,352 @@ const JoinQuiz = () => {
         }));
       }
 
-      // Save to context
       setCurrentQuiz(quiz);
       setCurrentSession({ ...session, isResumed });
       setQuestions(questions);
-
       navigate('/quiz/take');
     } catch (err) {
-      setError('⛔ ' + (err.message || 'Something went wrong.'));
+      setError(err.message || 'Something went wrong.');
     } finally {
       setPendingSubmit(false);
     }
   };
 
-  return (
-    <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light py-4">
+  const inputStyle = {
+    border: '1px solid #e0e0e0',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    fontSize: '14px',
+    width: '100%',
+    outline: 'none',
+    background: '#fff',
+    transition: 'border-color 0.2s',
+    boxSizing: 'border-box',
+  };
 
+  const labelStyle = {
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: '0.6px',
+    marginBottom: '6px',
+    display: 'block',
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#f5f5f5',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        fontFamily: 'Inter, sans-serif',
+      }}
+    >
       {/* Rules Modal */}
       {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content">
-              <div className="modal-header bg-warning">
-                <h5 className="modal-title fw-bold">⚠️ Quiz Rules & Warnings</h5>
-              </div>
-              <div className="modal-body">
-                <p className="text-muted small mb-3">
-                  Please read the following rules carefully before starting the quiz.
-                </p>
-                <div className="mb-3">
-                  <h6 className="fw-bold text-danger">🚫 Prohibited Actions</h6>
-                  <ul className="small">
-                    <li>Switching to another tab or window</li>
-                    <li>Minimizing or hiding the browser</li>
-                    <li>Refreshing or closing the browser window</li>
-                    <li>Copying or pasting any content</li>
-                    <li>Right-clicking anywhere on the page</li>
-                    <li>Using keyboard shortcuts (F12, Ctrl+U, etc.)</li>
-                    <li>Exiting fullscreen mode</li>
-                  </ul>
-                </div>
-                <div className="mb-3">
-                  <h6 className="fw-bold text-primary">📋 Violation System</h6>
-                  <ul className="small">
-                    <li>Every prohibited action is recorded as a violation</li>
-                    <li><strong>1st violation</strong> — Warning shown</li>
-                    <li><strong>2nd violation</strong> — Warning shown</li>
-                    <li><strong>3rd violation</strong> — Quiz auto-submitted</li>
-                    <li>All violations visible to your teacher</li>
-                  </ul>
-                </div>
-                <div className="mb-3">
-                  <h6 className="fw-bold text-success">✅ Good to Know</h6>
-                  <ul className="small">
-                    <li>Answers are auto-saved as you go</li>
-                    <li>Timer is shown — submit before it runs out</li>
-                    <li>Stable internet connection required</li>
-                    <li>Quiz will request fullscreen — please allow it</li>
-                  </ul>
-                </div>
-                <div className="alert alert-danger small mb-0">
-                  <strong>⚠️ Note:</strong> Any form of cheating will be reported to your teacher.
-                </div>
-              </div>
-              <div className="modal-footer flex-column align-items-stretch">
-                <div className="form-check mb-2">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    id="agreeCheck"
-                    checked={agreed}
-                    onChange={(e) => setAgreed(e.target.checked)}
-                  />
-                  <label className="form-check-label small fw-bold" htmlFor="agreeCheck">
-                    I have read and understood all the rules. I agree to take this quiz honestly.
-                  </label>
-                </div>
-                <div className="d-flex gap-2">
-                  <button
-                    className="btn btn-outline-secondary w-50"
-                    onClick={() => { setShowModal(false); setAgreed(false); }}
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '460px',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '24px 24px 16px',
+                borderBottom: '1px solid #f0f0f0',
+              }}
+            >
+              <h5 style={{ fontSize: '17px', fontWeight: '700', margin: 0 }}>
+                Before You Start
+              </h5>
+              <p style={{ fontSize: '13px', color: '#888', marginTop: '4px', marginBottom: 0 }}>
+                Read the rules carefully before proceeding.
+              </p>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px 24px' }}>
+              {[
+                {
+                  title: 'Prohibited Actions',
+                  border: '#000',
+                  items: [
+                    'Switching tabs or windows',
+                    'Minimizing or hiding the browser',
+                    'Refreshing or closing the page',
+                    'Copying, pasting, or right-clicking',
+                    'Using keyboard shortcuts (F12, Ctrl+U, etc.)',
+                  ],
+                },
+                {
+                  title: 'Violation System',
+                  border: '#555',
+                  items: [
+                    '1st violation — Warning',
+                    '2nd violation — Warning',
+                    '3rd violation — Quiz auto-submitted',
+                    'All violations are logged and visible to your teacher',
+                  ],
+                },
+                {
+                  title: 'Good to Know',
+                  border: '#aaa',
+                  items: [
+                    'Answers are auto-saved as you go',
+                    'Timer is always visible on screen',
+                    'Stable internet connection is required',
+                    'Quiz will request fullscreen mode',
+                  ],
+                },
+              ].map((section) => (
+                <div
+                  key={section.title}
+                  style={{
+                    background: '#fafafa',
+                    borderRadius: '10px',
+                    padding: '14px 16px',
+                    marginBottom: '10px',
+                    borderLeft: `3px solid ${section.border}`,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      marginBottom: '8px',
+                      margin: '0 0 8px 0',
+                    }}
                   >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn btn-primary w-50"
-                    onClick={handleConfirmStart}
-                    disabled={!agreed || pendingSubmit}
+                    {section.title}
+                  </p>
+                  <ul
+                    style={{
+                      fontSize: '13px',
+                      color: '#444',
+                      paddingLeft: '16px',
+                      margin: 0,
+                      lineHeight: '1.8',
+                    }}
                   >
-                    {pendingSubmit ? 'Starting...' : '🚀 Start Quiz'}
-                  </button>
+                    {section.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
                 </div>
+              ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '0 24px 24px' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  cursor: 'pointer',
+                  padding: '14px',
+                  border: agreed ? '2px solid #000' : '2px solid #e0e0e0',
+                  borderRadius: '10px',
+                  marginBottom: '14px',
+                  transition: 'border-color 0.2s',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  style={{ marginTop: '2px', accentColor: '#000' }}
+                />
+                <span style={{ fontSize: '13px', color: '#333', lineHeight: '1.5' }}>
+                  I have read and understood all the rules. I agree to take this quiz honestly.
+                </span>
+              </label>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => { setShowModal(false); setAgreed(false); }}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    background: '#fff',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmStart}
+                  disabled={!agreed || pendingSubmit}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    background: agreed ? '#000' : '#d4d4d4',
+                    color: '#fff',
+                    fontSize: '14px',
+                    cursor: agreed ? 'pointer' : 'not-allowed',
+                    fontWeight: '600',
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  {pendingSubmit ? 'Starting...' : 'Start Quiz'}
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Join Form */}
-      <div className="card shadow p-4" style={{ maxWidth: '450px', width: '100%' }}>
-        <div className="text-center mb-4">
-          <div style={{ fontSize: '50px' }}>📝</div>
-          <h2 className="fw-bold text-primary">Join Quiz</h2>
-          <p className="text-muted">Enter your details to start the quiz</p>
+      {/* Join Card */}
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: '16px',
+          padding: '36px 32px',
+          width: '100%',
+          maxWidth: '400px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ marginBottom: '28px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: '700', margin: 0 }}>Join Quiz</h2>
+          <p style={{ fontSize: '13px', color: '#888', marginTop: '4px', marginBottom: 0 }}>
+            Enter your details to get started
+          </p>
         </div>
 
-        {error && <div className="alert alert-danger">{error}</div>}
+        {error && (
+          <div
+            style={{
+              background: '#fef2f2',
+              border: '1px solid #fca5a5',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              fontSize: '13px',
+              color: '#dc2626',
+              marginBottom: '16px',
+            }}
+          >
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleJoin}>
-          <div className="mb-3">
-            <label className="form-label fw-bold">Quiz Code</label>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Quiz Code</label>
             <input
               type="text"
-              className="form-control form-control-lg text-center text-uppercase"
-              placeholder="Enter Quiz Code"
+              placeholder="Enter quiz code"
               value={quizCode}
               onChange={(e) => setQuizCode(e.target.value.toUpperCase())}
+              style={{
+                ...inputStyle,
+                textAlign: 'center',
+                fontSize: '20px',
+                fontWeight: '700',
+                letterSpacing: '6px',
+              }}
               required
             />
           </div>
-          <div className="mb-3">
-            <label className="form-label fw-bold">Full Name</label>
+
+          <div style={{ height: '1px', background: '#f0f0f0', margin: '20px 0' }} />
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Full Name</label>
             <input
               type="text"
-              className="form-control"
               placeholder="Enter your full name"
               value={studentName}
               onChange={(e) => setStudentName(e.target.value)}
+              style={inputStyle}
               required
             />
           </div>
-          <div className="mb-3">
-            <label className="form-label fw-bold">Student ID</label>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Student ID</label>
             <input
               type="text"
-              className="form-control"
               placeholder="Enter your student ID"
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
+              style={inputStyle}
               required
             />
           </div>
-          <div className="mb-4">
-            <label className="form-label fw-bold">Section</label>
+
+          <div style={{ marginBottom: '24px' }}>
+            <label style={labelStyle}>Section</label>
             <input
               type="text"
-              className="form-control"
               placeholder="e.g. 3-IT-A"
               value={section}
               onChange={(e) => setSection(e.target.value)}
+              style={inputStyle}
               required
             />
           </div>
+
           <button
             type="submit"
-            className="btn btn-primary w-100 btn-lg"
+            style={{
+              width: '100%',
+              padding: '13px',
+              background: '#000',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              letterSpacing: '0.3px',
+            }}
           >
-            🚀 Join Quiz
+            Join Quiz
           </button>
         </form>
 
-        <div className="text-center mt-3">
-          <small className="text-muted">
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>
             Are you a teacher?{' '}
-            <a href="/teacher/login" className="text-primary">Login here</a>
-          </small>
+            <a
+              href="/teacher/login"
+              style={{ color: '#000', fontWeight: '600', textDecoration: 'none' }}
+            >
+              Login here
+            </a>
+          </p>
         </div>
       </div>
     </div>

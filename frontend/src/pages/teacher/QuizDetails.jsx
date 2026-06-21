@@ -18,185 +18,248 @@ const QuizDetails = () => {
   const navigate = useNavigate();
 
   const fetchQuiz = useCallback(async () => {
-    try {
-      const data = await getQuiz(id);
-      setQuiz(data);
-    } catch (e) {}
+    try { const data = await getQuiz(id); setQuiz(data); } catch (e) {}
   }, [id]);
 
   const fetchQuestions = useCallback(async () => {
-    try {
-      const data = await getQuestionsByQuiz(id);
-      setQuestions(data);
-    } catch (e) {}
+    try { const data = await getQuestionsByQuiz(id); setQuestions(data); } catch (e) {}
   }, [id]);
 
   const fetchParticipants = useCallback(async () => {
-    try {
-      const data = await getSessionsByQuiz(id);
-      setParticipants(data);
-    } catch (e) {}
+    try { const data = await getSessionsByQuiz(id); setParticipants(data); } catch (e) {}
   }, [id]);
 
   const fetchViolations = useCallback(async () => {
-    try {
-      const data = await getViolationsByQuiz(id);
-      setViolations(data);
-    } catch (e) {}
+    try { const data = await getViolationsByQuiz(id); setViolations(data); } catch (e) {}
   }, [id]);
 
   useEffect(() => {
-    fetchQuiz();
-    fetchQuestions();
-    fetchParticipants();
-    fetchViolations();
-
-    const interval = setInterval(() => {
-      fetchParticipants();
-      fetchViolations();
-    }, 10000);
-
+    fetchQuiz(); fetchQuestions(); fetchParticipants(); fetchViolations();
+    const interval = setInterval(() => { fetchParticipants(); fetchViolations(); }, 10000);
     return () => clearInterval(interval);
   }, [fetchQuiz, fetchQuestions, fetchParticipants, fetchViolations]);
 
   const handleDeleteQuestion = async (questionId) => {
     if (!window.confirm('Delete this question?')) return;
-    try {
-      await deleteQuestion(questionId);
-      fetchQuestions();
-    } catch (e) {}
+    try { await deleteQuestion(questionId); fetchQuestions(); } catch (e) {}
   };
 
   const handleToggle = async () => {
-    try {
-      await toggleQuizActive(id, quiz.isActive);
-      fetchQuiz();
-    } catch (e) {}
+    try { await toggleQuizActive(id, quiz.isActive); fetchQuiz(); } catch (e) {}
   };
 
   const activeCount = participants.filter((p) => p.status === 'active').length;
   const submittedCount = participants.filter((p) => p.status === 'submitted').length;
 
-  if (!quiz) return <div className="text-center mt-5"><div className="spinner-border text-primary" /></div>;
+  const s = {
+    page: { minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' },
+    container: { maxWidth: '1000px', margin: '0 auto', padding: '28px 20px' },
+    tableWrap: { background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' },
+    th: {
+      padding: '12px 16px', fontSize: '11px', fontWeight: '700',
+      textTransform: 'uppercase', letterSpacing: '0.5px', color: '#888',
+      borderBottom: '1px solid #f0f0f0', textAlign: 'left', background: '#fafafa',
+    },
+    td: { padding: '14px 16px', fontSize: '13px', color: '#333', borderBottom: '1px solid #f5f5f5' },
+  };
+
+  if (!quiz) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '32px', height: '32px', border: '3px solid #e0e0e0', borderTop: '3px solid #000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+
+  const tabs = [
+    { key: 'questions', label: 'Questions', count: questions.length },
+    { key: 'participants', label: 'Participants', count: participants.length },
+    { key: 'violations', label: 'Violations', count: violations.length },
+  ];
+
+  const statusBadge = (status) => {
+    const map = {
+      submitted: { bg: '#f0fdf4', color: '#16a34a', border: '#86efac' },
+      active: { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd' },
+      expired: { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' },
+    };
+    const style = map[status] || map.expired;
+    return (
+      <span style={{
+        background: style.bg, color: style.color,
+        border: `1px solid ${style.border}`,
+        borderRadius: '6px', padding: '3px 10px',
+        fontSize: '12px', fontWeight: '600',
+      }}>
+        {status}
+      </span>
+    );
+  };
 
   return (
-    <div className="min-vh-100 bg-light">
+    <div style={s.page}>
       <Navbar />
-      <div className="container py-4">
+      <div style={s.container}>
 
         {/* Header */}
-        <div className="d-flex justify-content-between align-items-start mb-4">
-          <div>
-            <button
-              className="btn btn-outline-secondary btn-sm mb-2"
-              onClick={() => navigate('/teacher/dashboard')}
-            >
-              ← Back
-            </button>
-            <h3 className="fw-bold mb-1">{quiz.title}</h3>
-            <div className="d-flex gap-2 flex-wrap">
-              <span className="badge bg-primary fs-6">Code: {quiz.quizCode}</span>
-              <span className={`badge fs-6 ${quiz.isActive ? 'bg-success' : 'bg-secondary'}`}>
-                {quiz.isActive ? '● Active' : '● Inactive'}
-              </span>
-              <span className="badge bg-info fs-6">⏱ {quiz.timeLimit} mins</span>
+        <div style={{ marginBottom: '24px' }}>
+          <button
+            onClick={() => navigate('/teacher/dashboard')}
+            style={{ border: 'none', background: 'none', fontSize: '13px', color: '#888', cursor: 'pointer', padding: '0 0 12px 0', fontFamily: 'Inter, sans-serif' }}
+          >
+            ← Back
+          </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h4 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 8px 0' }}>{quiz.title}</h4>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', fontWeight: '700', padding: '4px 10px', borderRadius: '6px', background: '#f0f0f0', color: '#333', letterSpacing: '1px' }}>
+                  {quiz.quizCode}
+                </span>
+                <span style={{
+                  fontSize: '12px', fontWeight: '600', padding: '4px 10px', borderRadius: '6px',
+                  background: quiz.isActive ? '#f0fdf4' : '#fafafa',
+                  color: quiz.isActive ? '#16a34a' : '#888',
+                  border: `1px solid ${quiz.isActive ? '#86efac' : '#e0e0e0'}`,
+                }}>
+                  {quiz.isActive ? 'Active' : 'Inactive'}
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: '500', padding: '4px 10px', borderRadius: '6px', background: '#fafafa', color: '#555', border: '1px solid #e0e0e0' }}>
+                  {quiz.timeLimit} mins
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="d-flex gap-2">
-            <button
-              className={`btn ${quiz.isActive ? 'btn-warning' : 'btn-success'}`}
-              onClick={handleToggle}
-            >
-              {quiz.isActive ? 'Deactivate' : 'Activate'}
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate(`/teacher/quiz/${id}/results`)}
-            >
-              📊 Results
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleToggle}
+                style={{
+                  padding: '9px 16px', border: '1px solid #e0e0e0', borderRadius: '8px',
+                  background: '#fff', color: '#333', fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+                }}
+              >
+                {quiz.isActive ? 'Deactivate' : 'Activate'}
+              </button>
+              <button
+                onClick={() => navigate(`/teacher/quiz/${id}/results`)}
+                style={{
+                  padding: '9px 16px', border: 'none', borderRadius: '8px',
+                  background: '#000', color: '#fff', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                }}
+              >
+                Results
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="row g-3 mb-4">
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
           {[
-            { label: 'Total Participants', value: participants.length, color: 'primary', icon: '👥' },
-            { label: 'Currently Taking', value: activeCount, color: 'warning', icon: '✏️' },
-            { label: 'Submitted', value: submittedCount, color: 'success', icon: '✅' },
-            { label: 'Total Violations', value: violations.length, color: 'danger', icon: '⚠️' },
+            { label: 'Total Participants', value: participants.length },
+            { label: 'Currently Taking', value: activeCount },
+            { label: 'Submitted', value: submittedCount },
+            { label: 'Total Violations', value: violations.length },
           ].map((stat) => (
-            <div key={stat.label} className="col-6 col-md-3">
-              <div className={`card border-${stat.color} shadow-sm text-center`}>
-                <div className="card-body py-3">
-                  <div className="fs-3">{stat.icon}</div>
-                  <div className={`fs-3 fw-bold text-${stat.color}`}>{stat.value}</div>
-                  <small className="text-muted">{stat.label}</small>
-                </div>
-              </div>
+            <div key={stat.label} style={{ flex: 1, minWidth: '120px', background: '#fff', borderRadius: '12px', padding: '16px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+              <p style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 4px 0', color: '#111' }}>{stat.value}</p>
+              <p style={{ fontSize: '11px', color: '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{stat.label}</p>
             </div>
           ))}
         </div>
 
         {/* Tabs */}
-        <ul className="nav nav-tabs mb-4">
-          {[
-            { key: 'questions', label: `❓ Questions (${questions.length})` },
-            { key: 'participants', label: `👥 Participants (${participants.length})` },
-            { key: 'violations', label: `⚠️ Violations (${violations.length})` },
-          ].map((tab) => (
-            <li key={tab.key} className="nav-item">
-              <button
-                className={`nav-link ${activeTab === tab.key ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.key)}
-              >
-                {tab.label}
-              </button>
-            </li>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid #e0e0e0' }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '10px 16px', border: 'none', background: 'none',
+                fontSize: '13px', fontWeight: activeTab === tab.key ? '700' : '500',
+                color: activeTab === tab.key ? '#111' : '#888', cursor: 'pointer',
+                borderBottom: activeTab === tab.key ? '2px solid #000' : '2px solid transparent',
+                marginBottom: '-1px', display: 'flex', alignItems: 'center', gap: '6px',
+              }}
+            >
+              {tab.label}
+              <span style={{
+                background: activeTab === tab.key ? '#000' : '#f0f0f0',
+                color: activeTab === tab.key ? '#fff' : '#888',
+                borderRadius: '999px', padding: '1px 7px', fontSize: '11px', fontWeight: '700',
+              }}>
+                {tab.count}
+              </span>
+            </button>
           ))}
-        </ul>
+        </div>
 
         {/* Questions Tab */}
         {activeTab === 'questions' && (
           <div>
-            <button className="btn btn-primary mb-3" onClick={() => setShowForm(!showForm)}>
-              {showForm ? '✕ Cancel' : '+ Add Question'}
+            <button
+              onClick={() => setShowForm(!showForm)}
+              style={{
+                padding: '9px 16px', border: showForm ? '1px solid #e0e0e0' : 'none',
+                borderRadius: '8px', background: showForm ? '#fff' : '#000',
+                color: showForm ? '#333' : '#fff', fontSize: '13px',
+                fontWeight: '600', cursor: 'pointer', marginBottom: '16px',
+              }}
+            >
+              {showForm ? 'Cancel' : '+ Add Question'}
             </button>
+
             {showForm && (
-              <div className="card shadow-sm mb-4">
-                <div className="card-header bg-primary text-white fw-bold">Add New Question</div>
-                <div className="card-body">
-                  <QuestionForm quizId={id} onSuccess={() => { setShowForm(false); fetchQuestions(); }} />
-                </div>
+              <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', padding: '20px', marginBottom: '16px' }}>
+                <p style={{ fontSize: '14px', fontWeight: '700', margin: '0 0 16px 0' }}>Add New Question</p>
+                <QuestionForm quizId={id} onSuccess={() => { setShowForm(false); fetchQuestions(); }} />
               </div>
             )}
+
             {questions.length === 0 ? (
-              <div className="text-center text-muted mt-4">
-                <div className="fs-1">📭</div>
-                <p>No questions yet. Add your first question!</p>
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#aaa' }}>
+                <p style={{ fontSize: '14px', margin: 0 }}>No questions yet. Add your first question!</p>
               </div>
             ) : (
               questions.map((question, index) => (
-                <div key={question.id} className="card shadow-sm mb-3">
-                  <div className="card-body">
-                    <div className="d-flex justify-content-between">
-                      <div>
-                        <span className="badge bg-secondary me-2">Q{index + 1}</span>
-                        <span className="badge bg-info me-2">{question.questionType}</span>
-                        <span className="badge bg-warning text-dark">{question.points} pts</span>
-                      </div>
-                      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteQuestion(question.id)}>
-                        Delete
-                      </button>
+                <div key={question.id} style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', padding: '16px 20px', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
+                        Q{index + 1}
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
+                        {question.questionType}
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', background: '#f0f0f0', color: '#555' }}>
+                        {question.points} pts
+                      </span>
                     </div>
-                    <p className="mt-2 mb-2 fw-bold">{question.questionText}</p>
-                    <div className="d-flex flex-wrap gap-1">
-                      {question.choices?.map((choice) => (
-                        <span key={choice.id} className={`badge ${choice.isCorrect ? 'bg-success' : 'bg-light text-dark border'}`}>
-                          {choice.isCorrect ? '✓ ' : ''}{choice.choiceText}
-                        </span>
-                      ))}
-                    </div>
+                    <button
+                      onClick={() => handleDeleteQuestion(question.id)}
+                      style={{
+                        padding: '5px 12px', border: '1px solid #fca5a5', borderRadius: '6px',
+                        background: '#fef2f2', color: '#dc2626', fontSize: '12px', cursor: 'pointer', fontWeight: '500',
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 10px 0', color: '#111' }}>
+                    {question.questionText}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {question.choices?.map((choice) => (
+                      <span
+                        key={choice.id}
+                        style={{
+                          fontSize: '12px', fontWeight: '500', padding: '4px 10px', borderRadius: '6px',
+                          background: choice.isCorrect ? '#f0fdf4' : '#fafafa',
+                          color: choice.isCorrect ? '#16a34a' : '#555',
+                          border: `1px solid ${choice.isCorrect ? '#86efac' : '#e0e0e0'}`,
+                        }}
+                      >
+                        {choice.isCorrect ? '✓ ' : ''}{choice.choiceText}
+                      </span>
+                    ))}
                   </div>
                 </div>
               ))
@@ -207,46 +270,47 @@ const QuizDetails = () => {
         {/* Participants Tab */}
         {activeTab === 'participants' && (
           <div>
-            <div className="d-flex justify-content-between mb-3">
-              <small className="text-muted">Auto-refreshes every 10 seconds</small>
-              <button className="btn btn-sm btn-outline-primary" onClick={fetchParticipants}>🔄 Refresh</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', color: '#aaa', margin: 0 }}>Auto-refreshes every 10 seconds</p>
+              <button
+                onClick={fetchParticipants}
+                style={{ padding: '6px 14px', border: '1px solid #e0e0e0', borderRadius: '6px', background: '#fff', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Refresh
+              </button>
             </div>
-            <div className="table-responsive">
-              <table className="table table-hover bg-white shadow-sm">
-                <thead className="table-primary">
+            <div style={s.tableWrap}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Student Name</th>
-                    <th>Student ID</th>
-                    <th>Section</th>
-                    <th>Status</th>
-                    <th>Violations</th>
-                    <th>Started At</th>
-                    <th>Submitted At</th>
+                    {['#', 'Name', 'Student ID', 'Section', 'Status', 'Violations', 'Started', 'Submitted'].map((h) => (
+                      <th key={h} style={s.th}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {participants.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center text-muted py-4">No participants yet</td></tr>
+                    <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>No participants yet</td></tr>
                   ) : (
                     participants.map((p, index) => (
                       <tr key={p.id}>
-                        <td>{index + 1}</td>
-                        <td>{p.studentName}</td>
-                        <td>{p.studentId}</td>
-                        <td>{p.section || '-'}</td>
-                        <td>
-                          <span className={`badge ${p.status === 'submitted' ? 'bg-success' : p.status === 'active' ? 'bg-primary' : 'bg-danger'}`}>
-                            {p.status}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`badge ${p.violationCount > 0 ? 'bg-danger' : 'bg-secondary'}`}>
+                        <td style={s.td}>{index + 1}</td>
+                        <td style={{ ...s.td, fontWeight: '600' }}>{p.studentName}</td>
+                        <td style={s.td}>{p.studentId}</td>
+                        <td style={s.td}>{p.section || '-'}</td>
+                        <td style={s.td}>{statusBadge(p.status)}</td>
+                        <td style={s.td}>
+                          <span style={{
+                            fontSize: '12px', fontWeight: '700', padding: '3px 10px', borderRadius: '6px',
+                            background: p.violationCount > 0 ? '#fef2f2' : '#fafafa',
+                            color: p.violationCount > 0 ? '#dc2626' : '#888',
+                            border: `1px solid ${p.violationCount > 0 ? '#fca5a5' : '#e0e0e0'}`,
+                          }}>
                             {p.violationCount}
                           </span>
                         </td>
-                        <td>{p.startedAt?.toDate ? new Date(p.startedAt.toDate()).toLocaleTimeString() : '-'}</td>
-                        <td>{p.submittedAt?.toDate ? new Date(p.submittedAt.toDate()).toLocaleTimeString() : '-'}</td>
+                        <td style={s.td}>{p.startedAt?.toDate ? new Date(p.startedAt.toDate()).toLocaleTimeString() : '-'}</td>
+                        <td style={s.td}>{p.submittedAt?.toDate ? new Date(p.submittedAt.toDate()).toLocaleTimeString() : '-'}</td>
                       </tr>
                     ))
                   )}
@@ -259,31 +323,41 @@ const QuizDetails = () => {
         {/* Violations Tab */}
         {activeTab === 'violations' && (
           <div>
-            <div className="d-flex justify-content-end mb-3">
-              <button className="btn btn-sm btn-outline-danger" onClick={fetchViolations}>🔄 Refresh</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+              <button
+                onClick={fetchViolations}
+                style={{ padding: '6px 14px', border: '1px solid #e0e0e0', borderRadius: '6px', background: '#fff', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Refresh
+              </button>
             </div>
-            <div className="table-responsive">
-              <table className="table table-hover bg-white shadow-sm">
-                <thead className="table-danger">
+            <div style={s.tableWrap}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Student</th>
-                    <th>Violation Type</th>
-                    <th>Description</th>
-                    <th>Time</th>
+                    {['#', 'Student', 'Violation Type', 'Description', 'Time'].map((h) => (
+                      <th key={h} style={s.th}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {violations.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center text-muted py-4">No violations recorded</td></tr>
+                    <tr><td colSpan={5} style={{ ...s.td, textAlign: 'center', color: '#aaa', padding: '32px' }}>No violations recorded</td></tr>
                   ) : (
                     violations.map((v, index) => (
                       <tr key={v.id}>
-                        <td>{index + 1}</td>
-                        <td>{v.studentName || '-'}</td>
-                        <td><span className="badge bg-danger">{v.violationType}</span></td>
-                        <td>{v.description}</td>
-                        <td>{v.violatedAt?.toDate ? new Date(v.violatedAt.toDate()).toLocaleTimeString() : '-'}</td>
+                        <td style={s.td}>{index + 1}</td>
+                        <td style={{ ...s.td, fontWeight: '600' }}>{v.studentName || '-'}</td>
+                        <td style={s.td}>
+                          <span style={{
+                            fontSize: '12px', fontWeight: '600', padding: '3px 10px', borderRadius: '6px',
+                            background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5',
+                          }}>
+                            {v.violationType}
+                          </span>
+                        </td>
+                        <td style={s.td}>{v.description}</td>
+                        <td style={s.td}>{v.violatedAt?.toDate ? new Date(v.violatedAt.toDate()).toLocaleTimeString() : '-'}</td>
                       </tr>
                     ))
                   )}
