@@ -48,8 +48,7 @@ const QuizDetails = () => {
     try { await toggleQuizActive(id, quiz.isActive); fetchQuiz(); } catch (e) {}
   };
 
-  const activeCount = participants.filter((p) => p.status === 'active').length;
-  const submittedCount = participants.filter((p) => p.status === 'submitted').length;
+ const submittedCount = participants.filter((p) => p.status === 'submitted').length;
 
   const s = {
     page: { minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' },
@@ -74,7 +73,18 @@ const QuizDetails = () => {
     { key: 'questions', label: 'Questions', count: questions.length },
     { key: 'participants', label: 'Participants', count: participants.length },
     { key: 'violations', label: 'Violations', count: violations.length },
+    { key: 'details', label: 'Details', count: null },
   ];
+
+  const formatDateTime = (value) => {
+    if (!value) return '-';
+    // Firestore Timestamp
+    if (value?.toDate) return new Date(value.toDate()).toLocaleString();
+    // datetime-local string e.g. "2026-06-21T00:39"
+    const parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) return parsed.toLocaleString();
+    return value;
+  };
 
   const statusBadge = (status) => {
     const map = {
@@ -155,7 +165,6 @@ const QuizDetails = () => {
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
           {[
             { label: 'Total Participants', value: participants.length },
-            { label: 'Currently Taking', value: activeCount },
             { label: 'Submitted', value: submittedCount },
             { label: 'Total Violations', value: violations.length },
           ].map((stat) => (
@@ -181,13 +190,15 @@ const QuizDetails = () => {
               }}
             >
               {tab.label}
-              <span style={{
-                background: activeTab === tab.key ? '#000' : '#f0f0f0',
-                color: activeTab === tab.key ? '#fff' : '#888',
-                borderRadius: '999px', padding: '1px 7px', fontSize: '11px', fontWeight: '700',
-              }}>
-                {tab.count}
-              </span>
+              {tab.count !== null && (
+                <span style={{
+                  background: activeTab === tab.key ? '#000' : '#f0f0f0',
+                  color: activeTab === tab.key ? '#fff' : '#888',
+                  borderRadius: '999px', padding: '1px 7px', fontSize: '11px', fontWeight: '700',
+                }}>
+                  {tab.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -366,9 +377,44 @@ const QuizDetails = () => {
             </div>
           </div>
         )}
+
+        {/* Details Tab */}
+        {activeTab === 'details' && (
+          <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
+            {[
+              { label: 'Title', value: quiz.title || '-' },
+              { label: 'Description', value: quiz.description || '-' },
+              { label: 'Quiz Code', value: quiz.quizCode || '-' },
+              { label: 'Status', value: quiz.isActive ? 'Active' : 'Inactive' },
+              { label: 'Time Limit', value: `${quiz.timeLimit} mins` },
+              { label: 'Max Violations', value: quiz.maxViolations },
+              { label: 'Available From', value: formatDateTime(quiz.availableFrom) },
+              { label: 'Available Until', value: formatDateTime(quiz.availableUntil) },
+              { label: 'Randomize Questions', value: quiz.randomizeQuestions ? 'Yes' : 'No' },
+              { label: 'Randomize Choices', value: quiz.randomizeChoices ? 'Yes' : 'No' },
+              { label: 'Created At', value: formatDateTime(quiz.createdAt) },
+              { label: 'Last Updated', value: formatDateTime(quiz.updatedAt) },
+            ].map((row, i, arr) => (
+              <div
+                key={row.label}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 20px',
+                  borderBottom: i === arr.length - 1 ? 'none' : '1px solid #f0f0f0',
+                }}
+              >
+                <span style={{ fontSize: '13px', color: '#888', fontWeight: '500' }}>{row.label}</span>
+                <span style={{ fontSize: '13px', color: '#111', fontWeight: '600', textAlign: 'right' }}>{row.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default QuizDetails;
+

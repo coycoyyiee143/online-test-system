@@ -16,6 +16,32 @@ const generateQuizCode = () => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
+// Compute the *real* status of a quiz based on isActive + availability window.
+// This does NOT touch the database — it's a pure, read-only check used for
+// display and for blocking joins once a quiz has expired or hasn't started yet.
+// Possible return values: 'inactive' | 'upcoming' | 'expired' | 'active'
+export const getQuizEffectiveStatus = (quiz) => {
+  if (!quiz) return 'inactive';
+  if (!quiz.isActive) return 'inactive';
+
+  const now = new Date();
+
+  if (quiz.availableFrom) {
+    const from = new Date(quiz.availableFrom);
+    if (!isNaN(from.getTime()) && now < from) return 'upcoming';
+  }
+
+  if (quiz.availableUntil) {
+    const until = new Date(quiz.availableUntil);
+    if (!isNaN(until.getTime()) && now > until) return 'expired';
+  }
+
+  return 'active';
+};
+
+// Convenience boolean for places that just need a yes/no
+export const isQuizCurrentlyActive = (quiz) => getQuizEffectiveStatus(quiz) === 'active';
+
 // Create Quiz
 export const createQuiz = async (userId, quizData) => {
   const quizCode = generateQuizCode();
@@ -46,6 +72,8 @@ export const getQuiz = async (quizId) => {
 };
 
 // Get quiz by code (for students)
+// Returns null if the quiz doesn't exist, isn't marked active, OR has expired
+// based on availableUntil — even if isActive is still true in the database.
 export const getQuizByCode = async (quizCode) => {
   const q = query(
     collection(db, 'quizzes'),
@@ -54,7 +82,13 @@ export const getQuizByCode = async (quizCode) => {
   );
   const snapshot = await getDocs(q);
   if (snapshot.empty) return null;
-  return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+
+  const quiz = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+
+  const status = getQuizEffectiveStatus(quiz);
+  if (status !== 'active') return null;
+
+  return quiz;
 };
 
 // Update Quiz

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getQuizzesByTeacher } from '../../services/quizService';
+import { getQuizzesByTeacher, getQuizEffectiveStatus } from '../../services/quizService';
 import Navbar from '../../components/teacher/Navbar';
 import QuizCard from '../../components/teacher/QuizCard';
 
@@ -30,14 +30,19 @@ const Dashboard = () => {
 
   const filtered = quizzes.filter((q) => {
     const matchSearch = q.title.toLowerCase().includes(search.toLowerCase());
+    const status = getQuizEffectiveStatus(q);
     const matchFilter =
       filter === 'all' ||
-      (filter === 'active' && q.isActive) ||
-      (filter === 'inactive' && !q.isActive);
+      (filter === 'active' && status === 'active') ||
+      (filter === 'expired' && status === 'expired') ||
+      (filter === 'upcoming' && status === 'upcoming') ||
+      (filter === 'inactive' && status === 'inactive');
     return matchSearch && matchFilter;
   });
 
-  const totalActive = quizzes.filter((q) => q.isActive).length;
+  const totalActive = quizzes.filter((q) => getQuizEffectiveStatus(q) === 'active').length;
+  const totalExpired = quizzes.filter((q) => getQuizEffectiveStatus(q) === 'expired').length;
+  const totalInactive = quizzes.filter((q) => getQuizEffectiveStatus(q) === 'inactive').length;
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5', fontFamily: 'Inter, sans-serif' }}>
@@ -70,11 +75,12 @@ const Dashboard = () => {
         </div>
 
         {/* Stats */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
           {[
             { label: 'Total Quizzes', value: quizzes.length },
             { label: 'Active', value: totalActive },
-            { label: 'Inactive', value: quizzes.length - totalActive },
+            { label: 'Expired', value: totalExpired },
+            { label: 'Inactive', value: totalInactive },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -84,6 +90,7 @@ const Dashboard = () => {
                 padding: '16px 20px',
                 border: '1px solid #e0e0e0',
                 flex: 1,
+                minWidth: '110px',
                 textAlign: 'center',
               }}
             >
@@ -130,6 +137,8 @@ const Dashboard = () => {
           >
             <option value="all">All</option>
             <option value="active">Active</option>
+            <option value="expired">Expired</option>
+            <option value="upcoming">Upcoming</option>
             <option value="inactive">Inactive</option>
           </select>
         </div>

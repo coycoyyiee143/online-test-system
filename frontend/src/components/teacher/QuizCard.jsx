@@ -1,9 +1,17 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toggleQuizActive, deleteQuiz } from '../../services/quizService';
+import { toggleQuizActive, deleteQuiz, getQuizEffectiveStatus } from '../../services/quizService';
 
 const QuizCard = ({ quiz, onRefresh }) => {
   const navigate = useNavigate();
+  const status = getQuizEffectiveStatus(quiz);
+
+  const statusStyle = {
+    active: { bg: '#f0fdf4', color: '#16a34a', border: '#86efac', label: 'Active' },
+    expired: { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5', label: 'Expired' },
+    upcoming: { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd', label: 'Upcoming' },
+    inactive: { bg: '#fafafa', color: '#888', border: '#e0e0e0', label: 'Inactive' },
+  }[status];
 
   const handleToggle = async () => {
     try {
@@ -58,12 +66,12 @@ const QuizCard = ({ quiz, onRefresh }) => {
             padding: '3px 10px',
             borderRadius: '999px',
             flexShrink: 0,
-            background: quiz.isActive ? '#f0fdf4' : '#fafafa',
-            color: quiz.isActive ? '#16a34a' : '#888',
-            border: `1px solid ${quiz.isActive ? '#86efac' : '#e0e0e0'}`,
+            background: statusStyle.bg,
+            color: statusStyle.color,
+            border: `1px solid ${statusStyle.border}`,
           }}
         >
-          {quiz.isActive ? 'Active' : 'Inactive'}
+          {statusStyle.label}
         </span>
       </div>
 
@@ -119,22 +127,40 @@ const QuizCard = ({ quiz, onRefresh }) => {
         >
           Manage
         </button>
-        <button
-          onClick={handleToggle}
-          style={{
-            flex: 1,
-            padding: '8px',
-            border: '1px solid #e0e0e0',
-            borderRadius: '7px',
-            background: '#fff',
-            color: '#333',
-            fontSize: '12px',
-            fontWeight: '500',
-            cursor: 'pointer',
-          }}
-        >
-          {quiz.isActive ? 'Deactivate' : 'Activate'}
-        </button>
+        {status === 'expired' ? (
+          <span
+            style={{
+              flex: 1,
+              padding: '8px',
+              borderRadius: '7px',
+              background: '#fafafa',
+              color: '#aaa',
+              fontSize: '12px',
+              fontWeight: '500',
+              textAlign: 'center',
+              fontStyle: 'italic',
+            }}
+          >
+            Quiz ended
+          </span>
+        ) : (
+          <button
+            onClick={handleToggle}
+            style={{
+              flex: 1,
+              padding: '8px',
+              border: '1px solid #e0e0e0',
+              borderRadius: '7px',
+              background: '#fff',
+              color: '#333',
+              fontSize: '12px',
+              fontWeight: '500',
+              cursor: 'pointer',
+            }}
+          >
+            {quiz.isActive ? 'Deactivate' : 'Activate'}
+          </button>
+        )}
         <button
           onClick={handleDelete}
           style={{

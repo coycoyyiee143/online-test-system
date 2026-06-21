@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllTeachers, approveTeacher, rejectTeacher, getAllQuizzes } from '../../services/adminService';
+import { getQuizEffectiveStatus } from '../../services/quizService';
 import AdminNavbar from '../../components/admin/Navbar';
 
 const AdminDashboard = () => {
@@ -113,6 +114,30 @@ const AdminDashboard = () => {
         fontWeight: '600',
       }}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
+  };
+
+  const quizStatusBadge = (quiz) => {
+    const status = getQuizEffectiveStatus(quiz);
+    const map = {
+      active: { bg: '#f0fdf4', color: '#16a34a', border: '#86efac', label: 'Active' },
+      expired: { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5', label: 'Expired' },
+      upcoming: { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd', label: 'Upcoming' },
+      inactive: { bg: '#fafafa', color: '#888', border: '#e0e0e0', label: 'Inactive' },
+    };
+    const style = map[status] || map.inactive;
+    return (
+      <span style={{
+        background: style.bg,
+        color: style.color,
+        border: `1px solid ${style.border}`,
+        borderRadius: '6px',
+        padding: '3px 10px',
+        fontSize: '12px',
+        fontWeight: '600',
+      }}>
+        {style.label}
       </span>
     );
   };
@@ -400,19 +425,7 @@ const AdminDashboard = () => {
                           {quiz.quizCode}
                         </span>
                       </td>
-                      <td style={s.td}>
-                        <span style={{
-                          background: quiz.isActive ? '#f0fdf4' : '#fafafa',
-                          color: quiz.isActive ? '#16a34a' : '#888',
-                          border: `1px solid ${quiz.isActive ? '#86efac' : '#e0e0e0'}`,
-                          borderRadius: '6px',
-                          padding: '3px 10px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                        }}>
-                          {quiz.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
+                      <td style={s.td}>{quizStatusBadge(quiz)}</td>
                       <td style={s.td}>{quiz.timeLimit} mins</td>
                     </tr>
                   ))
