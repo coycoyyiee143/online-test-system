@@ -45,25 +45,31 @@ export const logViolation = async (
     await addDoc(collection(db, "violations"), {
       sessionId,
       quizId,
-
       studentId: session.studentId,
       studentName: session.studentName,
       section: session.section || "",
-
       violationType,
       description,
-
       violatedAt: serverTimestamp(),
     });
 
-    // Increment violation count
+    // Compute new violation count
+    const newCount = (session.violationCount || 0) + 1;
+
+    // Update session
     await updateDoc(sessionRef, {
       violationCount: increment(1),
     });
 
     console.log("Violation saved successfully.");
+
+    // IMPORTANT: Return the updated count
+    return newCount;
   } catch (error) {
     console.error("Error logging violation:", error);
+
+    // Return current count instead of undefined
+    return 0;
   }
 };
 

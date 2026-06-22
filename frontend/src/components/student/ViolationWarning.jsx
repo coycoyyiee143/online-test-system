@@ -1,8 +1,24 @@
 import React from 'react';
 
 const ViolationWarning = ({ count, max, onClose }) => {
-  const remaining = max - count;
+  // Convert to valid numbers
+  const safeCount = Number(count);
+  const safeMax = Number(max);
+
+  const violations = Number.isFinite(safeCount) ? safeCount : 0;
+  const maxViolations = Number.isFinite(safeMax) ? safeMax : 0;
+
+  const remaining = Math.max(0, maxViolations - violations);
   const isLast = remaining === 1;
+
+  // Debug (remove kapag okay na)
+  console.log({
+    count,
+    max,
+    violations,
+    maxViolations,
+    remaining,
+  });
 
   return (
     <div
@@ -36,7 +52,6 @@ const ViolationWarning = ({ count, max, onClose }) => {
           }}
         />
 
-        {/* Body */}
         <div style={{ padding: '28px 24px 24px' }}>
           {/* Icon */}
           <div
@@ -96,13 +111,30 @@ const ViolationWarning = ({ count, max, onClose }) => {
                 border: '1px solid #f0f0f0',
               }}
             >
-              <p style={{ fontSize: '22px', fontWeight: '700', margin: 0, color: '#dc2626' }}>
-                {count}
+              <p
+                style={{
+                  fontSize: '22px',
+                  fontWeight: '700',
+                  margin: 0,
+                  color: '#dc2626',
+                }}
+              >
+                {violations}
               </p>
-              <p style={{ fontSize: '11px', color: '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+
+              <p
+                style={{
+                  fontSize: '11px',
+                  color: '#888',
+                  margin: 0,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
                 Violations
               </p>
             </div>
+
             <div
               style={{
                 flex: 1,
@@ -123,7 +155,16 @@ const ViolationWarning = ({ count, max, onClose }) => {
               >
                 {remaining}
               </p>
-              <p style={{ fontSize: '11px', color: '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+
+              <p
+                style={{
+                  fontSize: '11px',
+                  color: '#888',
+                  margin: 0,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
                 Remaining
               </p>
             </div>
